@@ -104,6 +104,75 @@ async function parseXlsx(file: File): Promise<MenuImportRow[]> {
   return rows;
 }
 
+function parseCsvRecords(value: string): string[][] {
+  const input = value.replace(/^\uFEFF/, "");
+  const records: string[][] = [];
+  let record: string[] = [];
+  let field = "";
+  let quoted = false;
+
+  for (let index = 0; index < input.length; index += 1) {
+    const character = input[index];
+    if (quoted) {
+      if (character === '"' && input[index + 1] === '"') { field += '"'; index += 1; }
+      else if (character === '"') quoted = false;
+      else field += character;
+      continue;
+    }
+    if (character === '"' && field.length === 0) quoted = true;
+    else if (character === ",") { record.push(field); field = ""; }
+    else if (character === "\n" || character === "\r") {
+      record.push(field); field = "";
+      if (record.some((cell) => cell.trim())) records.push(record);
+      record = [];
+      if (character === "\r" && input[index + 1] === "\n") index += 1;
+    } else field += character;
+  }
+
+  if (quoted) throw new Error("This CSV has an unfinished quoted field. Check the file and try again.");
+  record.push(field);
+  if (record.some((cell) => cell.trim())) records.push(record);
+  return records;
+}
+
+async function parseCsv(file: File): Promise<MenuImportRow[]> {
+  const records = parseCsvRecords(await file.text());
+  let headerRow = -1;
+  let columns = { category: -1, name: -1, price: -1, description: -1, dietary: -1 };
+  for (let rowIndex = 0; rowIndex < Math.min(records.length, 12); rowIndex += 1) {
+    const headers = records[rowIndex].map((cell) => cell.trim());
+    const name = findColumn(headers, HEADER_NAMES);
+    const price = findColumn(headers, HEADER_PRICES);
+    if (name < 0 || price < 0) continue;
+    headerRow = rowIndex;
+    columns = {
+      name,
+      price,
+      category: findColumn(headers, HEADER_CATEGORIES),
+      description: findColumn(headers, HEADER_DESCRIPTIONS),
+      dietary: findColumn(headers, HEADER_DIETARY),
+    };
+    break;
+  }
+  if (headerRow < 0) throw new Error("Could not find Name and Price columns. Add a header row with columns such as Category, Name, Price, Description, Dietary Type.");
+
+  const rows: MenuImportRow[] = [];
+  for (const record of records.slice(headerRow + 1)) {
+    const name = record[columns.name]?.trim() ?? "";
+    const price = parsePrice(record[columns.price]);
+    if (!name || price === null) continue;
+    rows.push(makeRow(
+      columns.category >= 0 ? record[columns.category] ?? "" : "Imported Menu",
+      name,
+      price,
+      columns.description >= 0 ? record[columns.description] ?? "" : "",
+      columns.dietary >= 0 ? record[columns.dietary] ?? "veg" : "veg",
+    ));
+    if (rows.length > MAX_IMPORT_ROWS) throw new Error(`Import up to ${MAX_IMPORT_ROWS} menu items at a time.`);
+  }
+  return rows;
+}
+
 function getPriceFromLine(line: string) {
   const currencyPattern = /(?:₹|INR|Rs\.?)\s*([\d,]+(?:\.\d{1,2})?)/gi;
   let currencyMatch: RegExpExecArray | null;
@@ -190,10 +259,10 @@ async function parsePdf(file: File): Promise<MenuImportRow[]> {
 }
 
 export async function parseMenuImportFile(file: File): Promise<MenuImportRow[]> {
-  if (file.size > 15 * 1024 * 1024) throw new Error("Choose an XLSX or PDF file smaller than 15 MB.");
+  if (file.size > 15 * 1024 * 1024) throw new Error("Choose an XLSX, CSV or PDF file smaller than 15 MB.");
   const extension = file.name.split(".").pop()?.toLocaleLowerCase("en-US");
-  const rows = extension === "xlsx" ? await parseXlsx(file) : extension === "pdf" ? await parsePdf(file) : null;
-  if (!rows) throw new Error("Choose an .xlsx spreadsheet or a text-based .pdf menu.");
-  if (!rows.length) throw new Error("No menu rows were found. Scanned PDFs need OCR; use a text-based PDF or XLSX file instead.");
+  const rows = extension === "xlsx" ? await parseXlsx(file) : extension === "csv" ? await parseCsv(file) : extension === "pdf" ? await parsePdf(file) : null;
+  if (!rows) throw new Error("Choose an .xlsx, .csv spreadsheet or text-based .pdf menu.");
+  if (!rows.length) throw new Error("No menu rows were found. Scanned PDFs need OCR; use a text-based PDF, XLSX or CSV file instead.");
   return rows;
 }
