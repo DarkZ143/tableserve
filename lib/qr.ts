@@ -1,4 +1,4 @@
-export const TABLESERVE_PUBLIC_ORIGIN = "https://tableserve.vercel.app";
+export const TABLESERVE_PUBLIC_ORIGIN = "https://tableserve-mu.vercel.app";
 
 export function tableQrUrl(shopId: string, token: string) {
   return `${TABLESERVE_PUBLIC_ORIGIN}/t/${encodeURIComponent(shopId)}/${encodeURIComponent(token)}`;
