@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TableServe
 
-## Getting Started
+TableServe is a QR ordering and restaurant operations app built with Next.js, React, TypeScript and Firebase. The browser talks directly to Firebase Authentication, Cloud Firestore and Cloud Storage. Restaurant actions use Firestore transactions and security rules; this app does not deploy or call Cloud Functions.
 
-First, run the development server:
+## What is included
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Email/password registration, email verification, sign-in and password reset.
+- Restaurant onboarding, workspace selection and owner/manager/kitchen/waiter access.
+- Public table QR menus, guest orders, ticket tracking, kitchen queue, waiter assignments and order history.
+- Menu, restaurant settings, staff invitations and platform administration.
+- A single free workspace plan. Payment checkout and paid subscriptions are disabled.
+
+## Run locally
+
+Requirements: Node.js 24.12 or later, npm, and the Firebase CLI for deployment or emulators.
+
+1. Install dependencies with `npm install`.
+2. Copy `.env.example` to `.env.local` and add the Firebase Web App values from **Firebase Console → Project settings → Your apps**.
+3. Enable Email/Password in Firebase Authentication and create the Firestore database and Storage bucket.
+4. Run `npm run dev` and open `http://localhost:3000`.
+
+To use local Firebase emulators, start `npm run emulators` in one terminal, then set `NEXT_PUBLIC_USE_FIREBASE_EMULATORS=true` in `.env.local` and restart the app. Auth, Firestore, Storage and Hosting emulators are configured in `firebase.json`.
+
+## Firebase data and access
+
+- `lib/firebase.ts` initializes the Firebase client SDK and local emulator connections.
+- `lib/firebase-actions.ts` contains direct client reads, writes and transactions for restaurant workflows.
+- `firestore.rules` scopes restaurant data to the user's active membership and role. Guest QR reads use the small public projections in `publicRestaurants` and `restaurants/{shopId}/publicTables`.
+- `storage.rules` restricts menu image uploads to restaurant owners and managers.
+- Staff assignment writes a Firestore invitation. The invited person claims it after verifying their email and signing in.
+- Grant Master Admin access by adding `masterAdmins/{firebaseAuthUid}` in Firestore with `{ "email": "...", "active": true, "role": "MasterAdmin" }`. The document ID must be the Firebase Authentication UID. Only a project owner should create this record.
+
+On the first owner visit, existing restaurant records are moved to the free Firebase plan and the public QR projections are synchronized. Existing menu, staff and order documents remain in place.
+
+## Build and deploy
+
+```sh
+npm run typecheck
+npm run lint
+npm run build
+firebase deploy --project YOUR_FIREBASE_PROJECT_ID --only hosting,firestore:rules,firestore:indexes,storage
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Replace `YOUR_FIREBASE_PROJECT_ID` with the project ID used by `.env.local`; this repository does not assume a Firebase CLI project alias. `next build` exports the browser-routed app to `dist`; Firebase Hosting serves it with the SPA rewrite in `firebase.json`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Order totals
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The app checks current QR, table, restaurant and menu records in a Firestore transaction before creating an order. Because the browser computes the displayed order total and there is no trusted server runtime, Firestore Security Rules cannot fully recalculate arbitrary item arrays or guarantee that a modified client submitted the menu price. Orders are placed for payment at the restaurant; staff should confirm the displayed items and total against the menu before preparing them. A trusted server would be required for secure online payment or server-authoritative pricing.

@@ -2,25 +2,49 @@
   "name": "tableserve",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.12.0"
+  },
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "dev": "next dev --port 3000",
+    "build": "tsc --noEmit && next build",
+    "typecheck": "tsc --noEmit --pretty",
+    "lint": "eslint src components lib app",
+    "emulators": "node scripts/run-local-emulators.mjs"
   },
   "dependencies": {
-    "next": "16.4.6",
+    "@zxing/browser": "^0.2.1",
+    "exceljs": "^4.4.0",
+    "firebase": "^13.4.0",
+    "lucide-react": "^1.75.0",
+    "next": "^16.4.6",
+    "pdfjs-dist": "^6.5.438",
+    "qrcode.react": "^4.2.0",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "react-hook-form": "^7.92.0",
+    "react-router-dom": "^7.18.6",
+    "recharts": "^3.11.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@tailwindcss/turbopack": "4.3.3",
+    "@eslint/js": "^9.39.5",
+    "@firebase/rules-unit-testing": "^6.0.0",
+    "@tailwindcss/postcss": "^4.3.5",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.4.6",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.14.0",
     "tailwindcss": "4.3.3",
-    "typescript": "^5"
+    "typescript": "^5",
+    "typescript-eslint": "^8.73.0"
+  },
+  "overrides": {
+    "@firebase/firestore": {
+      "@grpc/grpc-js": "^1.14.7"
+    }
   }
 }

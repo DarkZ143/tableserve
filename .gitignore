@@ -13,9 +13,12 @@
 # testing
 /coverage
 
-# next.js
+# generated build output
 /.next/
 /out/
+/dist/
+.firebase/
+.firebase-cli-config/
 
 # production
 /build
@@ -29,9 +32,13 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+firebase-debug.log
+firebase-debug.*.log
+firestore-debug.log
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel

@@ -1,0 +1,27 @@
+{
+  "name": "tableserve-functions",
+  "type": "module",
+  "private": true,
+  "main": "lib/index.js",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "node --experimental-strip-types --test test/domain.test.mjs",
+    "deploy": "firebase deploy --only functions",
+    "seed:plans": "node scripts/seed-plans.mjs",
+    "provision:master": "node scripts/provision-platform-admin.mjs",
+    "provision:master:local": "node scripts/provision-platform-admin.mjs --emulator",
+    "migrate:v2": "node scripts/migrate-v1-to-v2.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^14.5.1",
+    "firebase-functions": "^7.4.0",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "typescript": "^5.8.3"
+  }
+}

@@ -1,0 +1,341 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function verified() { return signedIn() && request.auth.token.email_verified == true; }
+    function staffPath(shopId, uid) {
+      return /databases/$(database)/documents/restaurants/$(shopId)/staff/$(uid);
+    }
+    function membershipPath(uid, shopId) {
+      return /databases/$(database)/documents/users/$(uid)/memberships/$(shopId);
+    }
+    function isPlatformAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/masterAdmins/$(request.auth.uid))
+        && get(/databases/$(database)/documents/masterAdmins/$(request.auth.uid)).data.active == true
+        && get(/databases/$(database)/documents/masterAdmins/$(request.auth.uid)).data.role == 'MasterAdmin';
+    }
+    function activeStaff(shopId) {
+      return verified()
+        && exists(staffPath(shopId, request.auth.uid))
+        && get(staffPath(shopId, request.auth.uid)).data.isActive == true
+        && get(staffPath(shopId, request.auth.uid)).data.role in ['owner', 'manager', 'kitchen', 'waiter']
+        && exists(membershipPath(request.auth.uid, shopId))
+        && get(membershipPath(request.auth.uid, shopId)).data.isActive == true
+        && get(membershipPath(request.auth.uid, shopId)).data.role == get(staffPath(shopId, request.auth.uid)).data.role;
+    }
+    function role(shopId) { return get(staffPath(shopId, request.auth.uid)).data.role; }
+    function manager(shopId) { return activeStaff(shopId) && role(shopId) in ['owner', 'manager']; }
+    function owner(shopId) { return activeStaff(shopId) && role(shopId) == 'owner'; }
+    function kitchen(shopId) { return activeStaff(shopId) && role(shopId) in ['owner', 'manager', 'kitchen']; }
+    function provisionedOwner(shopId) {
+      let restaurant = getAfter(/databases/$(database)/documents/restaurants/$(shopId));
+      let staff = getAfter(staffPath(shopId, request.auth.uid));
+      let membership = getAfter(membershipPath(request.auth.uid, shopId));
+      return verified() && restaurant.data.ownerUid == request.auth.uid
+        && staff.data.role == 'owner' && staff.data.isActive == true
+        && membership.data.role == 'owner' && membership.data.isActive == true;
+    }
+    function invitationClaim(shopId, uid, incoming) {
+      let inviteId = incoming.inviteId;
+      let invitePath = /databases/$(database)/documents/staffInvites/$(inviteId);
+      let invite = get(invitePath);
+      return verified() && uid == request.auth.uid && incoming.uid == request.auth.uid
+        && incoming.isActive == true && invite.data.status == 'pending'
+        && invite.data.restaurantId == shopId && invite.data.email == request.auth.token.email
+        && invite.data.role == incoming.role && incoming.role in ['manager', 'kitchen', 'waiter'];
+    }
+    function memberLink(shopId, uid, incoming) {
+      let staff = getAfter(staffPath(shopId, uid));
+      return incoming.shopId == shopId && incoming.role == staff.data.role
+        && incoming.isActive == staff.data.isActive;
+    }
+    function guestOrder(shopId) {
+      let data = request.resource.data;
+      let publicRestaurant = get(/databases/$(database)/documents/publicRestaurants/$(shopId)).data;
+      let subscription = publicRestaurant;
+      let qr = get(/databases/$(database)/documents/qrLookup/$(data.qrTokenHash)).data;
+      let table = get(/databases/$(database)/documents/restaurants/$(shopId)/publicTables/$(data.tableId)).data;
+      return data.restaurantId == shopId
+        && data.status == 'queued' && data.ticketId is string && data.ticketId.matches('^TS-[A-F0-9]{40}$')
+        && data.tableId is string && data.qrTokenHash is string
+        && data.customerName is string && data.customerName.size() >= 2 && data.customerName.size() <= 80
+        && data.customerPhone is string && data.customerPhone.matches('^\\+?[0-9()\\- ]{8,20}$')
+        && data.subtotalPaise is int && data.subtotalPaise >= 0
+        && data.taxPaise is int && data.taxPaise >= 0
+        && data.serviceFeePaise is int && data.serviceFeePaise >= 0
+        && data.totalAmountPaise is int && data.totalAmountPaise == data.subtotalPaise + data.taxPaise + data.serviceFeePaise
+        && data.items is list && data.items.size() > 0 && data.items.size() <= 50
+        && publicRestaurant.isAcceptingOrders == true && publicRestaurant.platformStatus != 'suspended'
+        && subscription.subscriptionStatus == 'active'
+        && (subscription.currentPeriodEnd == null || subscription.currentPeriodEnd > request.time)
+        && qr.restaurantId == shopId && qr.tableId == data.tableId && qr.isActive == true
+        && table.isActive == true && table.qrTokenHash == data.qrTokenHash;
+    }
+    function linkedGuestRecord(shopId, orderId) {
+      let order = getAfter(/databases/$(database)/documents/restaurants/$(shopId)/orders/$(orderId));
+      return order.exists() && order.data.restaurantId == shopId;
+    }
+    function validStatusTransition(from, to) {
+      return from == to
+        || (from == 'queued' && to in ['accepted', 'cancelled'])
+        || (from == 'accepted' && to in ['preparing', 'cancelled'])
+        || (from == 'preparing' && to == 'ready')
+        || (from == 'ready' && to == 'served');
+    }
+    function allowedOrderUpdate(shopId) {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return (isPlatformAdmin() && changed.hasOnly(['status', 'statusEvents', 'assignedStaffUid', 'assignedAt', 'assignedBy', 'estimatedMinutes', 'expectedReadyAt', 'updatedAt']))
+        || (manager(shopId) && validStatusTransition(resource.data.status, request.resource.data.status)
+          && changed.hasOnly(['status', 'statusEvents', 'assignedStaffUid', 'assignedAt', 'assignedBy', 'estimatedMinutes', 'expectedReadyAt', 'updatedAt']))
+        || (activeStaff(shopId) && role(shopId) == 'kitchen'
+          && changed.hasOnly(['status', 'statusEvents', 'updatedAt'])
+          && validStatusTransition(resource.data.status, request.resource.data.status)
+          && request.resource.data.status in ['preparing', 'ready'])
+        || (activeStaff(shopId) && role(shopId) == 'waiter'
+          && resource.data.assignedStaffUid == request.auth.uid
+          && request.resource.data.status == 'served'
+          && validStatusTransition(resource.data.status, request.resource.data.status)
+          && changed.hasOnly(['status', 'statusEvents', 'updatedAt']));
+    }
+
+    match /users/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list, create, update, delete: if false;
+      match /memberships/{shopId} {
+        allow get, list: if signedIn() && request.auth.uid == uid;
+        allow create, update: if (manager(shopId) && memberLink(shopId, uid, request.resource.data))
+          || (uid == request.auth.uid && provisionedOwner(shopId) && memberLink(shopId, uid, request.resource.data))
+          || (invitationClaim(shopId, uid, getAfter(membershipPath(uid, shopId)).data)
+            && memberLink(shopId, uid, request.resource.data));
+        allow delete: if owner(shopId) && uid != request.auth.uid;
+      }
+    }
+
+    match /restaurants/{shopId} {
+      allow get: if activeStaff(shopId) || isPlatformAdmin();
+      allow list: if isPlatformAdmin();
+      allow create: if provisionedOwner(shopId)
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.planId == 'free'
+        && request.resource.data.subscriptionStatus == 'active';
+      allow update: if isPlatformAdmin()
+        || (owner(shopId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'name', 'nameKey', 'phone', 'address', 'city', 'state', 'postalCode', 'cuisine', 'timezone',
+          'taxRateBps', 'serviceFeePaise', 'isAcceptingOrders', 'planId', 'subscriptionStatus', 'updatedAt'
+        ]) && request.resource.data.planId == 'free' && request.resource.data.subscriptionStatus == 'active')
+        || (manager(shopId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lifetimeAcceptedOrders', 'updatedAt'])
+          && request.resource.data.lifetimeAcceptedOrders >= 0
+          && (request.resource.data.lifetimeAcceptedOrders == resource.data.lifetimeAcceptedOrders + 1
+            || request.resource.data.lifetimeAcceptedOrders == resource.data.lifetimeAcceptedOrders - 1));
+      allow delete: if false;
+
+      match /staff/{uid} {
+        allow get, list: if activeStaff(shopId) && (manager(shopId) || uid == request.auth.uid) || isPlatformAdmin();
+        allow create, update: if (owner(shopId)
+            && request.resource.data.role in ['manager', 'kitchen', 'waiter']
+            && request.resource.data.isActive is bool)
+          || (uid == request.auth.uid && provisionedOwner(shopId)
+            && request.resource.data.role == 'owner' && request.resource.data.isActive == true)
+          || (uid == request.auth.uid && invitationClaim(shopId, uid, request.resource.data));
+        allow delete: if owner(shopId) && uid != request.auth.uid;
+      }
+      match /staffInvites/{inviteId} {
+        allow get, list: if manager(shopId) || isPlatformAdmin();
+        allow create: if manager(shopId)
+          && request.resource.data.restaurantId == shopId
+          && request.resource.data.email is string
+          && request.resource.data.role in ['manager', 'kitchen', 'waiter']
+          && request.resource.data.status == 'pending';
+        allow update, delete: if manager(shopId) || isPlatformAdmin();
+      }
+      match /categories/{categoryId} {
+        allow get, list: if activeStaff(shopId) || resource.data.isActive == true;
+        allow create, update: if manager(shopId);
+        allow delete: if owner(shopId);
+      }
+      match /menuItems/{itemId} {
+        allow get, list: if activeStaff(shopId) || (resource.data.isActive == true && resource.data.isAvailable == true);
+        allow create, update: if manager(shopId);
+        allow delete: if owner(shopId);
+      }
+      match /tables/{tableId} {
+        allow get, list: if manager(shopId) || isPlatformAdmin();
+        allow create, update: if manager(shopId);
+        allow delete: if owner(shopId);
+      }
+      match /publicTables/{tableId} {
+        allow get: if true;
+        allow list: if false;
+        allow create, update: if manager(shopId);
+        allow delete: if owner(shopId);
+      }
+      match /tableNumbers/{numberId} {
+        allow get, list: if manager(shopId);
+        allow create, update, delete: if manager(shopId);
+      }
+      match /orders/{orderId} {
+        allow get, list: if manager(shopId) || isPlatformAdmin();
+        allow create: if guestOrder(shopId);
+        allow update: if allowedOrderUpdate(shopId);
+        allow delete: if owner(shopId);
+      }
+      match /assignedOrders/{orderId} {
+        allow get, list: if kitchen(shopId) || isPlatformAdmin()
+          || (activeStaff(shopId) && role(shopId) == 'waiter' && resource.data.assignedStaffUid == request.auth.uid);
+        allow create, update: if isPlatformAdmin() || manager(shopId)
+          || (activeStaff(shopId) && role(shopId) == 'kitchen'
+            && resource.data.assignedStaffUid is string
+            && request.resource.data.status in ['preparing', 'ready']
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']))
+          || (activeStaff(shopId) && role(shopId) == 'waiter' && resource.data.assignedStaffUid == request.auth.uid
+            && request.resource.data.status == 'served');
+        allow delete: if owner(shopId);
+      }
+      match /kitchenOrders/{orderId} {
+        allow get: if kitchen(shopId) || isPlatformAdmin()
+          || (activeStaff(shopId) && role(shopId) == 'waiter'
+            && get(/databases/$(database)/documents/restaurants/$(shopId)/orders/$(orderId)).data.assignedStaffUid == request.auth.uid);
+        allow list: if kitchen(shopId) || isPlatformAdmin();
+        allow create: if linkedGuestRecord(shopId, orderId);
+        allow update: if manager(shopId)
+          || (activeStaff(shopId) && role(shopId) == 'kitchen'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'estimatedMinutes', 'updatedAt'])
+            && validStatusTransition(resource.data.status, request.resource.data.status)
+            && request.resource.data.status in ['preparing', 'ready'])
+          || (activeStaff(shopId) && role(shopId) == 'waiter'
+            && get(/databases/$(database)/documents/restaurants/$(shopId)/orders/$(orderId)).data.assignedStaffUid == request.auth.uid
+            && request.resource.data.status == 'served'
+            && validStatusTransition(resource.data.status, request.resource.data.status)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']));
+        allow delete: if owner(shopId);
+      }
+      match /publicTracking/{trackingId} {
+        allow get: if true;
+        allow list: if false;
+        allow create: if linkedGuestRecord(shopId, request.resource.data.orderId)
+          && request.resource.data.ticketId == getAfter(/databases/$(database)/documents/restaurants/$(shopId)/orders/$(request.resource.data.orderId)).data.ticketId;
+        allow update: if manager(shopId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'statusEvents', 'estimatedMinutes', 'expectedReadyAt', 'updatedAt'])
+          && validStatusTransition(resource.data.status, request.resource.data.status)
+          || (activeStaff(shopId) && role(shopId) == 'kitchen'
+            && request.resource.data.status in ['preparing', 'ready']
+            && validStatusTransition(resource.data.status, request.resource.data.status)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'statusEvents', 'estimatedMinutes', 'expectedReadyAt', 'updatedAt']))
+          || (activeStaff(shopId) && role(shopId) == 'waiter'
+            && get(/databases/$(database)/documents/restaurants/$(shopId)/orders/$(resource.data.orderId)).data.assignedStaffUid == request.auth.uid
+            && request.resource.data.status == 'served'
+            && validStatusTransition(resource.data.status, request.resource.data.status)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'statusEvents', 'estimatedMinutes', 'expectedReadyAt', 'updatedAt']));
+        allow delete: if owner(shopId);
+      }
+      match /usageEvents/{eventId} {
+        allow get, list: if manager(shopId) || isPlatformAdmin();
+        allow create, update: if manager(shopId);
+        allow delete: if false;
+      }
+      match /auditLogs/{logId} {
+        allow get, list: if manager(shopId) || isPlatformAdmin();
+        allow create: if (activeStaff(shopId)
+            && request.resource.data.actorUid == request.auth.uid
+            && request.resource.data.actorRole == role(shopId)
+            && (role(shopId) in ['owner', 'manager'] || request.resource.data.action == 'order.status_changed'))
+          || (isPlatformAdmin() && request.resource.data.actorUid == request.auth.uid);
+        allow update, delete: if false;
+      }
+      match /{privateCollection}/{documentId} {
+        allow read, write: if false;
+      }
+      match /{privateCollection}/{documentId}/{nestedCollection}/{nestedDocument} {
+        allow read, write: if false;
+      }
+    }
+
+    match /publicRestaurants/{shopId} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if provisionedOwner(shopId) && request.resource.data.restaurantId == shopId;
+      allow update: if isPlatformAdmin()
+        || (owner(shopId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'name', 'taxRateBps', 'serviceFeePaise', 'isAcceptingOrders', 'updatedAt'
+        ]))
+        || (owner(shopId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'restaurantId', 'name', 'taxRateBps', 'serviceFeePaise', 'isAcceptingOrders', 'platformStatus',
+          'subscriptionStatus', 'currentUsage', 'orderLimit', 'currentPeriodEnd', 'updatedAt'
+        ]) && request.resource.data.platformStatus == resource.data.platformStatus
+          && request.resource.data.subscriptionStatus == 'active' && request.resource.data.orderLimit == null)
+        || (manager(shopId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['currentUsage', 'updatedAt'])
+          && request.resource.data.currentUsage >= 0
+          && (request.resource.data.currentUsage == resource.data.currentUsage + 1
+            || request.resource.data.currentUsage == resource.data.currentUsage - 1));
+      allow delete: if false;
+    }
+
+    match /subscriptions/{shopId} {
+      allow get: if activeStaff(shopId) || isPlatformAdmin();
+      allow list: if isPlatformAdmin();
+      allow create: if provisionedOwner(shopId)
+        && request.resource.data.planId == 'free' && request.resource.data.amountPaise == 0
+        && request.resource.data.status == 'active' && request.resource.data.orderLimit == null;
+      allow update: if isPlatformAdmin()
+        || (manager(shopId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['currentUsage', 'updatedAt'])
+          && request.resource.data.currentUsage >= 0)
+        || (owner(shopId) && request.resource.data.planId == 'free' && request.resource.data.planName == 'Free'
+          && request.resource.data.amountPaise == 0 && request.resource.data.orderLimit == null
+          && request.resource.data.status == 'active' && request.resource.data.provider == 'firebase'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'planId', 'planName', 'amountPaise', 'orderLimit', 'status', 'provider', 'currentUsage', 'currentPeriodStart', 'currentPeriodEnd', 'updatedAt'
+          ]));
+      allow delete: if false;
+      match /payments/{paymentId} { allow read, write: if false; }
+    }
+
+    match /staffInvites/{inviteId} {
+      allow get, list: if verified() && request.auth.token.email == resource.data.email && resource.data.status == 'pending';
+      allow create: if (manager(request.resource.data.restaurantId) || isPlatformAdmin())
+        && request.resource.data.email is string && request.resource.data.role in ['manager', 'kitchen', 'waiter']
+        && request.resource.data.status == 'pending';
+      allow delete: if verified() && request.auth.token.email == resource.data.email
+        && getAfter(staffPath(resource.data.restaurantId, request.auth.uid)).data.inviteId == inviteId
+        && getAfter(membershipPath(request.auth.uid, resource.data.restaurantId)).data.inviteId == inviteId;
+      allow update: if false;
+    }
+    match /plans/{planId} {
+      allow get, list: if true;
+      allow create, update, delete: if isPlatformAdmin();
+    }
+    match /masterAdmins/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list, create, update, delete: if false;
+    }
+    match /platformAuditLogs/{logId} {
+      allow get, list: if isPlatformAdmin();
+      allow create: if isPlatformAdmin();
+      allow update, delete: if false;
+    }
+    match /platformMetrics/{metricId} { allow read, write: if isPlatformAdmin(); }
+    match /qrLookup/{qrHash} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if manager(request.resource.data.restaurantId);
+      allow update: if manager(resource.data.restaurantId) || isPlatformAdmin();
+      allow delete: if manager(resource.data.restaurantId) || isPlatformAdmin();
+    }
+    match /ticketLookup/{trackingId} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if request.resource.data.trackingId == trackingId
+        && getAfter(/databases/$(database)/documents/restaurants/$(request.resource.data.restaurantId)/publicTracking/$(trackingId)).data.ticketId == request.resource.data.ticketId;
+      allow update, delete: if false;
+    }
+    match /idempotencyLookup/{requestId} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if request.resource.data.ticketId is string
+        && request.resource.data.orderId is string
+        && getAfter(/databases/$(database)/documents/restaurants/$(request.resource.data.restaurantId)/orders/$(request.resource.data.orderId)).data.ticketId == request.resource.data.ticketId;
+      allow update, delete: if false;
+    }
+    match /{privateCollection}/{documentId} { allow read, write: if false; }
+  }
+}

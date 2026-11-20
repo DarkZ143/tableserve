@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+          "secondary-fixed": "#ffddb2",
+          "on-surface": "#341006",
+          "on-secondary": "#ffffff",
+          "surface": "#fff8f6",
+          "on-secondary-fixed": "#291800",
+          "on-primary-container": "#ff8d9f",
+          "inverse-surface": "#4e2518",
+          "error-container": "#ffdad6",
+          "on-tertiary-container": "#96b88f",
+          "on-primary": "#ffffff",
+          "background": "#fff8f6",
+          "surface-container-lowest": "#ffffff",
+          "secondary": "#815500",
+          "tertiary": "#163215",
+          "on-tertiary": "#ffffff",
+          "outline-variant": "#debfc2",
+          "tertiary-fixed": "#c9ecc0",
+          "on-secondary-container": "#724a00",
+          "on-primary-fixed-variant": "#8b1336",
+          "error": "#ba1a1a",
+          "surface-container": "#ffe9e4",
+          "surface-bright": "#fff8f6",
+          "on-secondary-fixed-variant": "#624000",
+          "inverse-primary": "#ffb2bc",
+          "on-surface-variant": "#574144",
+          "surface-container-highest": "#ffdbd1",
+          "inverse-on-surface": "#ffede8",
+          "on-error-container": "#93000a",
+          "surface-container-high": "#ffe2da",
+          "on-primary-fixed": "#400012",
+          "primary-container": "#850d32",
+          "primary": "#5f001f",
+          "primary-fixed": "#ffd9dd",
+          "tertiary-container": "#2c4929",
+          "surface-container-low": "#fff1ed",
+          "secondary-container": "#feba4f",
+          "on-tertiary-fixed": "#052106",
+          "tertiary-fixed-dim": "#aed0a6",
+          "outline": "#8b7173",
+          "on-tertiary-fixed-variant": "#314e2e",
+          "surface-tint": "#ac2e4c",
+          "surface-dim": "#ffcfc2",
+          "secondary-fixed-dim": "#feba4f",
+          "on-background": "#341006",
+          "on-error": "#ffffff",
+          "primary-fixed-dim": "#ffb2bc",
+          "surface-variant": "#ffdbd1"
+        },
+        "borderRadius": {
+          "DEFAULT": "0.25rem",
+          "lg": "0.5rem",
+          "xl": "0.75rem",
+          "full": "9999px"
+        },
+        "spacing": {
+          "space-md": "1rem",
+          "space-lg": "1.5rem",
+          "margin": "1rem",
+          "space-xs": "0.25rem",
+          "gutter": "1rem",
+          "margin-lg": "3.5rem",
+          "space-sm": "0.5rem",
+          "gutter-md": "1.5rem",
+          "margin-md": "2rem",
+          "gutter-lg": "2rem",
+          "space-xl": "2.5rem"
+        },
+        "fontFamily": {
+          "body-sm": [
+            "Plus Jakarta Sans"
+          ],
+          "headline-lg-mobile": [
+            "Playfair Display"
+          ],
+          "headline-md": [
+            "Playfair Display"
+          ],
+          "headline-sm": [
+            "Playfair Display"
+          ],
+          "label-lg": [
+            "Plus Jakarta Sans"
+          ],
+          "display-lg": [
+            "Playfair Display"
+          ],
+          "body-lg": [
+            "Plus Jakarta Sans"
+          ],
+          "headline-lg": [
+            "Playfair Display"
+          ],
+          "price-md": [
+            "Plus Jakarta Sans"
+          ],
+          "label-sm": [
+            "Plus Jakarta Sans"
+          ],
+          "display-lg-mobile": [
+            "Playfair Display"
+          ],
+          "body-md": [
+            "Plus Jakarta Sans"
+          ],
+          "label-md": [
+            "Plus Jakarta Sans"
+          ],
+          "price-lg": [
+            "Plus Jakarta Sans"
+          ]
+        },
+        "fontSize": {
+          "body-sm": [
+            "0.875rem",
+            {
+              "lineHeight": "1.25rem",
+              "letterSpacing": "0.005em",
+              "fontWeight": "400"
+            }
+          ],
+          "headline-lg-mobile": [
+            "1.75rem",
+            {
+              "lineHeight": "2.25rem",
+              "letterSpacing": "-0.01em",
+              "fontWeight": "600"
+            }
+          ],
+          "headline-md": [
+            "1.5rem",
+            {
+              "lineHeight": "2rem",
+              "letterSpacing": "0em",
+              "fontWeight": "600"
+            }
+          ],
+          "headline-sm": [
+            "1.25rem",
+            {
+              "lineHeight": "1.625rem",
+              "letterSpacing": "0em",
+              "fontWeight": "500"
+            }
+          ],
+          "label-lg": [
+            "0.875rem",
+            {
+              "lineHeight": "1.25rem",
+              "letterSpacing": "0.02em",
+              "fontWeight": "600"
+            }
+          ],
+          "display-lg": [
+            "3.5rem",
+            {
+              "lineHeight": "4rem",
+              "letterSpacing": "-0.02em",
+              "fontWeight": "600"
+            }
+          ],
+          "body-lg": [
+            "1.125rem",
+            {
+              "lineHeight": "1.75rem",
+              "letterSpacing": "-0.005em",
+              "fontWeight": "400"
+            }
+          ],
+          "headline-lg": [
+            "2.25rem",
+            {
+              "lineHeight": "2.75rem",
+              "letterSpacing": "-0.015em",
+              "fontWeight": "600"
+            }
+          ],
+          "price-md": [
+            "1.125rem",
+            {
+              "lineHeight": "1.375rem",
+              "letterSpacing": "0em",
+              "fontWeight": "700"
+            }
+          ],
+          "label-sm": [
+            "0.6875rem",
+            {
+              "lineHeight": "0.875rem",
+              "letterSpacing": "0.06em",
+              "fontWeight": "700"
+            }
+          ],
+          "display-lg-mobile": [
+            "2.5rem",
+            {
+              "lineHeight": "3rem",
+              "letterSpacing": "-0.01em",
+              "fontWeight": "600"
+            }
+          ],
+          "body-md": [
+            "1rem",
+            {
+              "lineHeight": "1.5rem",
+              "letterSpacing": "0em",
+              "fontWeight": "400"
+            }
+          ],
+          "label-md": [
+            "0.75rem",
+            {
+              "lineHeight": "1rem",
+              "letterSpacing": "0.04em",
+              "fontWeight": "600"
+            }
+          ],
+          "price-lg": [
+            "1.5rem",
+            {
+              "lineHeight": "1.75rem",
+              "letterSpacing": "-0.01em",
+              "fontWeight": "700"
+            }
+          ]
+        }
+      },
+    },
+  }</script></head><body class="bg-surface font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-72 bg-surface-container-low z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(106,59,45,0.06)]"><div class="flex flex-col"><div class="h-20 px-space-lg flex items-center gap-space-sm bg-surface-container-low"><img alt="TableServe Emblem Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/ALJJyrA_9Y_jMEUx6M5sTNPfGCD5Y0ahPh9o1cA3CaTIYTw_59G-jkSwrhomEvBsgmBvFCGbRKzj5YyQQhJWnlGjzKJeYqHz1hMy2CfMzNHIzITV3HbQRcAS7bSTIEZCuGeqiZ1qIJd3w670ikC5iF_Mvt6b8uDcqAaqFuDcY9ZqSXVUm0SBOxVd9xxeIJxiIE7PYFHelT_OeHFTbnB0hDGyBChVwA-2tDW_voUItnNkjC4n"/><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-primary leading-none tracking-tight">TableServe</span><span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mt-space-xs">Enterprise Hub</span></div></div><div class="px-space-md py-space-sm"><div class="p-space-sm rounded-xl bg-surface-container flex items-center justify-between shadow-[0_2px_6px_-1px_rgba(106,59,45,0.03)]"><div class="flex items-center gap-space-sm"><span class="w-2.5 h-2.5 rounded-full bg-tertiary-container animate-pulse"></span><div class="flex flex-col"><span class="font-label-md text-label-md text-on-surface font-semibold">Main Salon &amp; Patio</span><span class="font-label-sm text-label-sm text-on-surface-variant">Dinner Service • Shift #4</span></div></div><button class="w-7 h-7 rounded-full bg-surface flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-sm">swap_vert</span></button></div></div><nav class="px-space-md py-space-xs flex flex-col gap-space-xs" data-active-classes="bg-primary-container text-on-primary font-semibold shadow-sm rounded-xl"><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-xl text-on-surface-variant font-label-lg text-label-lg hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="live-operations-&amp;-orders" href="#"><span class="material-symbols-outlined text-lg">room_service</span><span>Live Operations &amp; Orders</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-xl text-on-surface-variant font-label-lg text-label-lg hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="kitchen-display-(kds)" href="#"><span class="material-symbols-outlined text-lg">outdoor_grill</span><span>Kitchen Display (KDS)</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-xl text-on-surface-variant font-label-lg text-label-lg hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="digital-menu-&amp;-categories" href="#"><span class="material-symbols-outlined text-lg">menu_book</span><span>Digital Menu &amp; Categories</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-xl text-on-surface-variant font-label-lg text-label-lg hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="tables-&amp;-qr-management" href="#"><span class="material-symbols-outlined text-lg">table_restaurant</span><span>Tables &amp; QR Management</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-xl text-on-surface-variant font-label-lg text-label-lg hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="guest-experience-&amp;-feedback" href="#"><span class="material-symbols-outlined text-lg">sentiment_satisfied</span><span>Guest Experience &amp; Feedback</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-xl text-on-surface-variant font-label-lg text-label-lg hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="analytics-&amp;-financials" href="#"><span class="material-symbols-outlined text-lg">bar_chart</span><span>Analytics &amp; Financials</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-xl text-on-surface-variant font-label-lg text-label-lg hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="staff-&amp;-settings" href="#"><span class="material-symbols-outlined text-lg">tune</span><span>Staff &amp; Settings</span></a></nav></div><div class="p-space-md"><div class="p-space-sm rounded-xl bg-surface-container-high/60 flex items-center justify-between"><div class="flex flex-col"><span class="font-label-sm text-label-sm text-on-surface-variant uppercase">POS Sync Status</span><span class="font-label-md text-label-md text-on-surface font-semibold flex items-center gap-1.5 mt-0.5"><span class="w-1.5 h-1.5 rounded-full bg-tertiary-container"></span>Connected</span></div><span class="material-symbols-outlined text-on-surface-variant text-base">cloud_done</span></div></div></aside><div class="pl-72"><header class="fixed top-0 left-72 right-0 h-20 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(106,59,45,0.04)] z-40 px-gutter-md flex items-center justify-between"><div class="flex items-center gap-space-lg"><div class="inline-flex items-center gap-space-sm px-space-md py-space-xs rounded-full bg-surface-container-lowest shadow-[0_2px_8px_-1px_rgba(106,59,45,0.04)]"><span class="w-2.5 h-2.5 rounded-full bg-tertiary-container animate-pulse"></span><span class="font-label-md text-label-md text-tertiary font-semibold">Live &amp; Accepting Orders</span></div><div class="hidden xl:flex items-center gap-space-xs text-on-surface-variant font-body-sm text-body-sm"><span class="material-symbols-outlined text-base text-secondary">schedule</span><span>Active Shift: <strong class="text-on-surface font-semibold font-label-md text-label-md">Evening Prime (17:00 - 23:00)</strong></span></div></div><div class="flex items-center gap-space-md"><div class="relative flex items-center"><button class="flex items-center gap-space-sm px-space-md py-space-xs rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors"><span class="material-symbols-outlined text-base text-primary">table_restaurant</span><span class="font-label-md text-label-md font-semibold">Quick Table Switcher</span><span class="material-symbols-outlined text-sm">expand_more</span></button></div><button aria-label="Notifications" class="relative w-10 h-10 rounded-full bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-xl">notifications</span><span class="absolute top-2 right-2 w-2.5 h-2.5 bg-primary rounded-full ring-2 ring-surface"></span></button><div class="h-8 w-px bg-outline-variant/30"></div><div class="flex items-center gap-space-sm"><div class="flex flex-col text-right hidden sm:flex"><span class="font-label-md text-label-md text-on-surface font-semibold leading-tight">Marcus Vance</span><span class="font-label-sm text-label-sm text-on-surface-variant leading-none">General Manager</span></div><img alt="Profile" class="w-8 h-8 rounded-full object-cover ring-2 ring-primary/20" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC0sghWpJMGtMyFdZgqo4aDTd6TKhPo708dGndOSDURcs0HlhQOqnBFQLaCx878qkBtyvNDmwvQ5dIybrn_P0j8Mn0VRy0j39jrMR2614hUrwp8u6C8GGhTP9HN4Y8QllWx0f-lZCNvXutQEIQKL2g7H8d2vk7VeCne02YNopDgYkDBL5Ph0HoHTF-_SAlESFGmTzjQslMO406Q5-biJA8e6qgcrRukD4rYWhiJ0ds"/></div></div></header><main class="w-full pt-20 bg-surface min-h-screen"><div class="flex flex-col w-full">
+<div class="px-gutter-lg py-space-md bg-surface-container-low shadow-sm flex flex-col xl:flex-row xl:items-center justify-between gap-space-md">
+<div class="flex flex-wrap items-center gap-space-md">
+<div class="flex items-center gap-space-sm bg-surface-container-lowest px-space-md py-space-xs rounded-full shadow-sm">
+<span class="w-2.5 h-2.5 rounded-full bg-secondary-container animate-pulse"></span>
+<span class="font-label-md text-label-md text-on-surface font-semibold tracking-wide">Live Menu Pacing Engine</span>
+<span class="text-outline-variant font-label-sm">•</span>
+<span class="font-label-sm text-label-sm text-secondary font-bold uppercase tracking-wider">Dinner Shift Active</span>
+</div>
+<div class="flex items-center gap-space-sm text-on-surface-variant font-body-sm text-body-sm">
+<span class="font-label-md text-label-md text-on-surface font-semibold">42 Total Items</span>
+<span class="text-outline-variant">/</span>
+<span class="inline-flex items-center gap-1 text-error font-semibold font-label-md text-label-md bg-error-container/40 px-2 py-0.5 rounded-md">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+          3 Out-of-Stock (86ed)
+        </span>
+<span class="text-outline-variant hidden sm:inline">•</span>
+<span class="hidden sm:inline text-on-surface-variant font-label-sm text-label-sm">Station Sync Latency: 42ms</span>
+</div>
+</div>
+<div class="flex flex-wrap items-center gap-space-sm">
+<button class="flex items-center gap-space-xs px-space-md py-space-xs rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md font-semibold transition-all shadow-sm">
+<span class="material-symbols-outlined text-base text-secondary">file_download</span>
+<span>Export CSV</span>
+</button>
+<button class="flex items-center gap-space-xs px-space-md py-space-xs rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md font-semibold transition-all shadow-sm">
+<span class="material-symbols-outlined text-base text-secondary">currency_rupee</span>
+<span>Bulk Price Update</span>
+</button>
+<button class="flex items-center gap-space-xs px-space-md py-space-xs rounded-full bg-secondary-container text-on-secondary-container hover:bg-secondary-fixed font-label-md text-label-md font-semibold transition-all shadow-sm">
+<span class="material-symbols-outlined text-base">create_new_folder</span>
+<span>+ New Category</span>
+</button>
+<button class="flex items-center gap-space-xs px-space-lg py-space-xs rounded-full bg-primary-container hover:bg-primary text-on-primary font-label-lg text-label-lg font-semibold transition-all shadow-md hover:scale-[1.015]">
+<span class="material-symbols-outlined text-lg">add_circle</span>
+<span>Create New Dish</span>
+</button>
+</div>
+</div>
+<div class="px-gutter-lg pt-space-lg bg-surface flex flex-col gap-space-lg">
+<div class="flex items-center justify-between border-b-0 pb-0 overflow-x-auto">
+<div class="flex items-center gap-space-sm min-w-max pb-2">
+<button class="px-space-md py-space-xs rounded-full font-label-md text-label-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-all flex items-center gap-2">
+<span>All Courses</span>
+<span class="text-xs bg-surface-container-high text-on-surface px-2 py-0.5 rounded-full font-bold">42</span>
+</button>
+<button class="px-space-md py-space-xs rounded-full font-label-md text-label-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-all flex items-center gap-2">
+<span class="material-symbols-outlined text-sm text-secondary" style="font-variation-settings: 'FILL' 1;">hotel_class</span>
+<span>Chef Specials</span>
+<span class="text-xs bg-surface-container-high text-on-surface px-2 py-0.5 rounded-full font-bold">6</span>
+</button>
+<button class="px-space-md py-space-xs rounded-full font-label-md text-label-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-all flex items-center gap-2">
+<span>Starters &amp; Kebabs</span>
+<span class="text-xs bg-surface-container-high text-on-surface px-2 py-0.5 rounded-full font-bold">12</span>
+</button>
+<button class="px-space-md py-space-xs rounded-full font-label-md text-label-md bg-primary-container text-on-primary font-semibold shadow-md flex items-center gap-2">
+<span>Biryanis &amp; Curries</span>
+<span class="text-xs bg-on-primary/20 text-on-primary px-2 py-0.5 rounded-full font-bold">14</span>
+</button>
+<button class="px-space-md py-space-xs rounded-full font-label-md text-label-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-all flex items-center gap-2">
+<span>Artisanal Breads</span>
+<span class="text-xs bg-surface-container-high text-on-surface px-2 py-0.5 rounded-full font-bold">4</span>
+</button>
+<button class="px-space-md py-space-xs rounded-full font-label-md text-label-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-all flex items-center gap-2">
+<span>Royal Desserts</span>
+<span class="text-xs bg-surface-container-high text-on-surface px-2 py-0.5 rounded-full font-bold">6</span>
+</button>
+</div>
+<div class="hidden xl:flex items-center gap-space-sm pl-space-md">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Menu Version: v4.8 • Royal Awadh Edition</span>
+</div>
+</div>
+<div class="p-space-md rounded-2xl bg-surface-container-low shadow-sm flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-space-md">
+<div class="relative flex-1 max-w-xl">
+<span class="material-symbols-outlined absolute left-space-md top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="w-full pl-11 pr-space-md py-2.5 rounded-xl bg-surface-container-lowest text-on-surface placeholder:text-outline font-body-sm text-body-sm shadow-inner focus:outline-none focus:ring-2 focus:ring-primary-container/20 transition-all" placeholder="Search by dish name, SKU, allergen tag or prep line..." type="text" value="Dum Murgh"/>
+</div>
+<div class="flex flex-wrap items-center gap-space-sm">
+<div class="flex items-center gap-1 bg-surface-container-lowest px-space-md py-2 rounded-xl text-on-surface font-label-md text-label-md shadow-sm">
+<span class="font-semibold text-on-surface-variant">Dietary:</span>
+<select class="bg-transparent font-semibold text-on-surface focus:outline-none cursor-pointer">
+<option>All Regimes</option>
+<option>Veg Only</option>
+<option>Non-Veg</option>
+<option>Halal Certified</option>
+<option>Jain Option</option>
+</select>
+</div>
+<div class="flex items-center gap-1 bg-surface-container-lowest px-space-md py-2 rounded-xl text-on-surface font-label-md text-label-md shadow-sm">
+<span class="font-semibold text-on-surface-variant">Station:</span>
+<select class="bg-transparent font-semibold text-on-surface focus:outline-none cursor-pointer">
+<option>All KDS Lines</option>
+<option>Awadh Handi Line</option>
+<option>Tandoor Hearth #2</option>
+<option>Slow Roast Oven</option>
+<option>Pastry &amp; Larder</option>
+</select>
+</div>
+<div class="flex items-center gap-1 bg-surface-container-lowest px-space-md py-2 rounded-xl text-on-surface font-label-md text-label-md shadow-sm">
+<span class="font-semibold text-on-surface-variant">Status:</span>
+<select class="bg-transparent font-semibold text-on-surface focus:outline-none cursor-pointer">
+<option>Active &amp; 86ed</option>
+<option>Active Only</option>
+<option>86ed (Out of Stock)</option>
+</select>
+</div>
+<button class="p-2.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors" title="Clear Filters">
+<span class="material-symbols-outlined text-lg">filter_alt_off</span>
+</button>
+</div>
+</div>
+</div>
+<div class="px-gutter-lg py-space-lg grid grid-cols-1 xl:grid-cols-12 gap-gutter-lg items-start">
+<div class="xl:col-span-8 flex flex-col gap-space-md">
+<div class="flex items-center justify-between px-space-xs">
+<div class="flex items-center gap-space-sm">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Curated Offerings</h2>
+<span class="font-label-sm text-label-sm bg-surface-container-high text-on-surface px-2.5 py-0.5 rounded-full font-bold">Showing 6 of 14 Items</span>
+</div>
+<div class="flex items-center gap-space-xs text-on-surface-variant font-label-sm text-label-sm">
+<span>Sort by:</span>
+<button class="font-semibold text-primary flex items-center gap-0.5">Popularity <span class="material-symbols-outlined text-sm">expand_more</span></button>
+</div>
+</div>
+<div class="flex flex-col gap-space-sm">
+<div class="group p-space-md rounded-2xl bg-surface-container-low hover:bg-surface-container transition-all shadow-[0_4px_20px_-2px_rgba(106,59,45,0.05)] relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md ring-2 ring-primary-container/20">
+<div class="flex items-center gap-space-md min-w-0">
+<div class="relative w-20 h-20 rounded-xl overflow-hidden shadow-sm flex-shrink-0">
+<img alt="Awadhi Dum Biryani" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Exquisite Awadhi Dum Murgh Biryani plated in an ornate hammered brass royal handi, fragrant long saffron basmati rice crowned with caramelized golden onions, fresh mint sprigs, roasted cashew nuts, soft steam rising, warm ambient golden lighting in a luxury Indian fine-dining setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAZJfy6EeP5RbwObYwa8FwzK9sstk2n9f0RXDWOHDRu5CSQbfIlk79qYE9OJMm6pB92CGqW4egS-94aRyZgtK2bQzAZOrexfTJpd2hol3SSlO3AI6CuYlbXCRENqSQdgzKMBkgVkj-NjEADJkgwcBbPgnBpnoVa2SFsoqAO6Z1vpj8P5ia2dDPZr3q8pMtbVKZBOyOCfbJKYkJl67n7mi9HamhZs961bgwY0AHlFjw"/>
+<span class="absolute top-1 left-1 bg-surface-container-lowest/90 backdrop-blur-md p-1 rounded-md shadow-sm">
+<span class="w-3.5 h-3.5 border border-on-surface-variant flex items-center justify-center">
+<span class="w-0 h-0 border-l-[3.5px] border-l-transparent border-r-[3.5px] border-r-transparent border-b-[5px] border-b-on-surface-variant"></span>
+</span>
+</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-space-sm flex-wrap">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold truncate">Awadhi Dum Murgh Biryani</span>
+<span class="px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed text-label-sm font-label-sm font-bold flex items-center gap-1 shadow-sm">
+<span class="material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">star</span>
+                  Chef Bestseller
+                </span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-1 mt-0.5">Slow-sealed chicken thighs with 32 Lucknowi spices, aged basmati &amp; saffron attar infusion.</p>
+<div class="flex items-center gap-space-md mt-1.5 text-label-sm font-label-sm text-on-surface-variant">
+<span class="flex items-center gap-1 text-on-surface font-semibold"><span class="material-symbols-outlined text-xs text-secondary">outdoor_grill</span>Awadh Handi #1</span>
+<span>•</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-xs">timer</span>25 min SLA</span>
+<span>•</span>
+<span class="text-primary font-semibold">3 Live Modifiers</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-space-lg w-full md:w-auto justify-between md:justify-end flex-shrink-0 pt-2 md:pt-0">
+<div class="flex flex-col md:text-right">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Base Price</span>
+<span class="font-price-lg text-price-lg text-primary font-bold">₹790</span>
+</div>
+<div class="flex items-center gap-space-md">
+<div class="flex flex-col items-center">
+<button class="w-12 h-6 rounded-full bg-tertiary-container relative p-0.5 transition-colors focus:outline-none" title="Live Available">
+<span class="block w-5 h-5 rounded-full bg-surface-container-lowest shadow-md transform translate-x-6 transition-transform"></span>
+</button>
+<span class="font-label-sm text-label-sm text-tertiary font-bold mt-1">IN STOCK</span>
+</div>
+<div class="flex items-center gap-1 bg-surface-container-lowest p-1 rounded-xl shadow-sm">
+<button class="p-2 rounded-lg text-primary-container bg-surface-container-high hover:bg-primary-container hover:text-on-primary transition-all" title="Edit Catalog Item">
+<span class="material-symbols-outlined text-base">edit</span>
+</button>
+<button class="p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all" title="Manage Modifiers">
+<span class="material-symbols-outlined text-base">tune</span>
+</button>
+<button class="p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all" title="Duplicate Dish">
+<span class="material-symbols-outlined text-base">content_copy</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<div class="group p-space-md rounded-2xl bg-surface-container-low hover:bg-surface-container transition-all shadow-[0_4px_20px_-2px_rgba(106,59,45,0.05)] relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-md min-w-0">
+<div class="relative w-20 h-20 rounded-xl overflow-hidden shadow-sm flex-shrink-0">
+<img alt="Paneer Tikka Angare" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Smoked artisanal paneer cubes charred over open tandoor charcoal fire, glazed with Kashmiri chili marinade, served with charred bell peppers, mint chutney droplets, fine dining garnish on matte beige ceramic plate." src="https://lh3.googleusercontent.com/aida-public/AB6AXuADu4p_EF4rC4QEoPC9GBCq9Ksutnw9RJrxPeKSaCoinx3tX4asImmMFOccja4BOjeYD0mKdRvUs1_-Fk1bL1r_avWKYbTVVEf6SIptt0B4n1fFowW1I0tlYAr8GnD68_SqlVHTXVgWQGQIfld6HY1BxnHXMKrS3qACYBv910leUnjloMNRXZx3BePQZHmk3BESoee7_upAIip7Wz9IfFh3rk8yoBTBzdE88GXGe-0"/>
+<span class="absolute top-1 left-1 bg-surface-container-lowest/90 backdrop-blur-md p-1 rounded-md shadow-sm">
+<span class="w-3.5 h-3.5 border border-tertiary-container flex items-center justify-center">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary-container"></span>
+</span>
+</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-space-sm flex-wrap">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold truncate">Paneer Tikka Angare</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-label-sm font-label-sm font-semibold">Starters</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-1 mt-0.5">Himalayan pasture cottage cheese smoked with cloves, hand-pounded yellow mustard oil.</p>
+<div class="flex items-center gap-space-md mt-1.5 text-label-sm font-label-sm text-on-surface-variant">
+<span class="flex items-center gap-1 text-on-surface font-semibold"><span class="material-symbols-outlined text-xs text-secondary">outdoor_grill</span>Tandoor Hearth #2</span>
+<span>•</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-xs">timer</span>16 min SLA</span>
+<span>•</span>
+<span class="text-on-surface font-semibold">2 Modifiers</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-space-lg w-full md:w-auto justify-between md:justify-end flex-shrink-0 pt-2 md:pt-0">
+<div class="flex flex-col md:text-right">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Base Price</span>
+<span class="font-price-lg text-price-lg text-on-surface font-bold">₹480</span>
+</div>
+<div class="flex items-center gap-space-md">
+<div class="flex flex-col items-center">
+<button class="w-12 h-6 rounded-full bg-tertiary-container relative p-0.5 transition-colors focus:outline-none" title="Live Available">
+<span class="block w-5 h-5 rounded-full bg-surface-container-lowest shadow-md transform translate-x-6 transition-transform"></span>
+</button>
+<span class="font-label-sm text-label-sm text-tertiary font-bold mt-1">IN STOCK</span>
+</div>
+<div class="flex items-center gap-1 bg-surface-container-lowest p-1 rounded-xl shadow-sm">
+<button class="p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined text-base">edit</span>
+</button>
+<button class="p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined text-base">tune</span>
+</button>
+<button class="p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined text-base">content_copy</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<div class="group p-space-md rounded-2xl bg-surface-container-low hover:bg-surface-container transition-all shadow-[0_4px_20px_-2px_rgba(106,59,45,0.05)] relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-md min-w-0">
+<div class="relative w-20 h-20 rounded-xl overflow-hidden shadow-sm flex-shrink-0">
+<img alt="Garlic Truffle Naan" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Golden crisp artisanal clay oven naan speckled with charred garlic granules, shaved black summer truffle, glossy European cultured butter glaze, served in a woven raw linen basket in warm studio light." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAVAwZXZNmQpujW0Hb94np_7QUdZ_NNoFoPC3M6pGR8v5PsWUShHdK5tWninyneo-YYU22W7xY0cO1PjG7PafwooPLmXMEyofkLpE1uxRx2DXuAhFLVU37mrIjYh_9wbj_GMltBE1ZO6GqeGScagNcpWfU1j3B06n58QIlE8iNuIzmZZqbAUQ663ZrPQtWJ5jZxgEhBsNkbwdUAIfe6bjuyeQt7Uus8R9dv1Id95iw"/>
+<span class="absolute top-1 left-1 bg-surface-container-lowest/90 backdrop-blur-md p-1 rounded-md shadow-sm">
+<span class="w-3.5 h-3.5 border border-tertiary-container flex items-center justify-center">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary-container"></span>
+</span>
+</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-space-sm flex-wrap">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold truncate">Garlic Truffle Naan</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-label-sm font-label-sm font-semibold">Artisanal Breads</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-1 mt-0.5">Leavened clay-oven flatbread brushed with black summer truffle oil &amp; fermented wild garlic.</p>
+<div class="flex items-center gap-space-md mt-1.5 text-label-sm font-label-sm text-on-surface-variant">
+<span class="flex items-center gap-1 text-on-surface font-semibold"><span class="material-symbols-outlined text-xs text-secondary">outdoor_grill</span>Tandoor Hearth #2</span>
+<span>•</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-xs">timer</span>8 min SLA</span>
+<span>•</span>
+<span>No Modifiers</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-space-lg w-full md:w-auto justify-between md:justify-end flex-shrink-0 pt-2 md:pt-0">
+<div class="flex flex-col md:text-right">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Base Price</span>
+<span class="font-price-lg text-price-lg text-on-surface font-bold">₹270</span>
+</div>
+<div class="flex items-center gap-space-md">
+<div class="flex flex-col items-center">
+<button class="w-12 h-6 rounded-full bg-tertiary-container relative p-0.5 transition-colors focus:outline-none" title="Live Available">
+<span class="block w-5 h-5 rounded-full bg-surface-container-lowest shadow-md transform translate-x-6 transition-transform"></span>
+</button>
+<span class="font-label-sm text-label-sm text-tertiary font-bold mt-1">IN STOCK</span>
+</div>
+<div class="flex items-center gap-1 bg-surface-container-lowest p-1 rounded-xl shadow-sm">
+<button class="p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined text-base">edit</span>
+</button>
+<button class="p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined text-base">tune</span>
+</button>
+<button class="p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined text-base">content_copy</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<div class="group p-space-md rounded-2xl bg-surface-container-low hover:bg-surface-container transition-all shadow-[0_4px_20px_-2px_rgba(106,59,45,0.05)] relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-md min-w-0">
+<div class="relative w-20 h-20 rounded-xl overflow-hidden shadow-sm flex-shrink-0">
+<img alt="Dal Makhani Fondue" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Velvety 36-hour slow-cooked black lentils finished with churned white butter and smoked cream swirl, served in an artisanal terracotta warmer pot with crisp lavash crisps." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDyR50cEVfooFqZHjaq1kAxvlhPhV-o5DqdfTqTbx9zv4OjigvzkzkaQ90TZz11NGE3KBxxg7Tgk6I1cXkBrdylUn3l5RcQsRlPeO7CbQhKLhNuq0LtPPUEdCFHvXklouTFVwXNhVfRn2Sf5IncNTZ-YI4ISy0haRfCi8KUaQLx8EZYWO0lohOMAZIixb_kiMzopZFl8M0nXkDFWx-et0SGBrbUPt-kyTevvrk4C7Y"/>
+<span class="absolute top-1 left-1 bg-surface-container-lowest/90 backdrop-blur-md p-1 rounded-md shadow-sm">
+<span class="w-3.5 h-3.5 border border-tertiary-container flex items-center justify-center">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary-container"></span>
+</span>
+</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-space-sm flex-wrap">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold truncate">Dal Makhani Fondue</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-label-sm font-label-sm font-semibold">Curries</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-1 mt-0.5">36-hour simmered Urad lentils with sun-ripened plum tomatoes and organic cultured butter.</p>
+<div class="flex items-center gap-space-md mt-1.5 text-label-sm font-label-sm text-on-surface-variant">
+<span class="flex items-center gap-1 text-on-surface font-semibold"><span class="material-symbols-outlined text-xs text-secondary">soup_kitchen</span>Simmer Pot Station</span>
+<span>•</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-xs">timer</span>10 min SLA</span>
+<span>•</span>
+<span class="text-on-surface font-semibold">1 Modifier</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-space-lg w-full md:w-auto justify-between md:justify-end flex-shrink-0 pt-2 md:pt-0">
+<div class="flex flex-col md:text-right">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Base Price</span>
+<span class="font-price-lg text-price-lg text-on-surface font-bold">₹620</span>
+</div>
+<div class="flex items-center gap-space-md">
+<div class="flex flex-col items-center">
+<button class="w-12 h-6 rounded-full bg-tertiary-container relative p-0.5 transition-colors focus:outline-none" title="Live Available">
+<span class="block w-5 h-5 rounded-full bg-surface-container-lowest shadow-md transform translate-x-6 transition-transform"></span>
+</button>
+<span class="font-label-sm text-label-sm text-tertiary font-bold mt-1">IN STOCK</span>
+</div>
+<div class="flex items-center gap-1 bg-surface-container-lowest p-1 rounded-xl shadow-sm">
+<button class="p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined text-base">edit</span>
+</button>
+<button class="p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined text-base">tune</span>
+</button>
+<button class="p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined text-base">content_copy</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<div class="group p-space-md rounded-2xl bg-surface-container/60 hover:bg-surface-container transition-all shadow-[0_4px_20px_-2px_rgba(106,59,45,0.03)] relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md opacity-90">
+<div class="flex items-center gap-space-md min-w-0">
+<div class="relative w-20 h-20 rounded-xl overflow-hidden shadow-sm flex-shrink-0 grayscale">
+<img alt="Sikandari Raan" class="w-full h-full object-cover" data-alt="Slow braised whole leg of spring lamb with dark caramelized glaze, bone exposed, fragrant Kashmiri spice crust, served on silver presentation platter with silver leaf accents." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDzRAHHhhTtvEmGVUAcytOFzPkOUUqaTRUhNPpLFIbcVjyLZWD5yoANyoATAJrE97Rx1fJpkxpmJEXVJZcw8sv9yXIkxFKcX1-TLF5D3UxMmaZ9Ad5Sh0xP7ve67m-RG9Gr5HBaYiuYtysrP7_pts2NbmqfMjg9Panq37-JDBNOOHNwQTjdzziCkrG9E3jVwDaCpMVx4ti0RYdk6klBth3TODOMg6Pxf5LuT0S75N8"/>
+<span class="absolute inset-0 bg-primary/40 backdrop-blur-[1px] flex items-center justify-center">
+<span class="font-label-sm text-label-sm font-bold text-on-primary tracking-widest uppercase">86'ED</span>
+</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-space-sm flex-wrap">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold truncate line-through decoration-error/50">Sikandari Raan</span>
+<span class="px-2 py-0.5 rounded-full bg-error-container text-on-error-container text-label-sm font-label-sm font-bold">Temporarily 86'ed</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-1 mt-0.5">Whole braised lamb shank macerated for 24 hours in aged rum and royal spice reduction.</p>
+<div class="flex items-center gap-space-md mt-1.5 text-label-sm font-label-sm text-on-surface-variant">
+<span class="flex items-center gap-1 text-on-surface font-semibold"><span class="material-symbols-outlined text-xs text-secondary">heat</span>Slow Roast Hearth</span>
+<span>•</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-xs">timer</span>45 min SLA</span>
+<span>•</span>
+<span class="text-error font-semibold">Exhausted at 19:40</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-space-lg w-full md:w-auto justify-between md:justify-end flex-shrink-0 pt-2 md:pt-0">
+<div class="flex flex-col md:text-right">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Base Price</span>
+<span class="font-price-lg text-price-lg text-on-surface font-bold">₹1,450</span>
+</div>
+<div class="flex items-center gap-space-md">
+<div class="flex flex-col items-center">
+<button class="w-12 h-6 rounded-full bg-error relative p-0.5 transition-colors focus:outline-none" title="Mark Available">
+<span class="block w-5 h-5 rounded-full bg-surface-container-lowest shadow-md transform translate-x-0 transition-transform"></span>
+</button>
+<span class="font-label-sm text-label-sm text-error font-bold mt-1">OUT OF STOCK</span>
+</div>
+<div class="flex items-center gap-1 bg-surface-container-lowest p-1 rounded-xl shadow-sm">
+<button class="px-3 py-1.5 rounded-lg text-primary font-label-md text-label-md font-semibold bg-surface-container hover:bg-surface-container-high transition-all flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">replay</span>
+<span>Restock</span>
+</button>
+<button class="p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined text-base">edit</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<div class="group p-space-md rounded-2xl bg-surface-container-low hover:bg-surface-container transition-all shadow-[0_4px_20px_-2px_rgba(106,59,45,0.05)] relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-md min-w-0">
+<div class="relative w-20 h-20 rounded-xl overflow-hidden shadow-sm flex-shrink-0">
+<img alt="Rose Pistachio Phirni" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Chilled creamy artisanal ground rice pudding presented in raw earthen clay shikora, adorned with edible 24k silver vark foil, crushed green Iranian pistachios and fresh crimson damask rose petals." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAjbqw7K0bE31478actrrYR5m1-nwjU0cVIsIblOvVR6iHXAIoDoSOG3ky3vM_e72RXRoOkYod4VGtqvE5tTkItR7jp4wj7OwtPQbt5UCYJifo9HOupd20Vg6qniXu7QyTTf_lKxjh73NtLhBCaW-a10L8RC-p8qS89EeuofmtBpb0j0Wc0SEJEOP4fjax_6YjDRhk0xYdk9mrawUyAB5I_guP0X4lIPvT4JRdAL1g"/>
+<span class="absolute top-1 left-1 bg-surface-container-lowest/90 backdrop-blur-md p-1 rounded-md shadow-sm">
+<span class="w-3.5 h-3.5 border border-tertiary-container flex items-center justify-center">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary-container"></span>
+</span>
+</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-space-sm flex-wrap">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold truncate">Rose Pistachio Phirni</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-label-sm font-label-sm font-semibold">Desserts</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-1 mt-0.5">Creamy ground basmati rice custard set in unglazed earthen clay with Kannauj rose essence.</p>
+<div class="flex items-center gap-space-md mt-1.5 text-label-sm font-label-sm text-on-surface-variant">
+<span class="flex items-center gap-1 text-on-surface font-semibold"><span class="material-symbols-outlined text-xs text-secondary">icecream</span>Pastry Larder</span>
+<span>•</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-xs">timer</span>5 min SLA</span>
+<span>•</span>
+<span>Chilled Item</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-space-lg w-full md:w-auto justify-between md:justify-end flex-shrink-0 pt-2 md:pt-0">
+<div class="flex flex-col md:text-right">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Base Price</span>
+<span class="font-price-lg text-price-lg text-on-surface font-bold">₹350</span>
+</div>
+<div class="flex items-center gap-space-md">
+<div class="flex flex-col items-center">
+<button class="w-12 h-6 rounded-full bg-tertiary-container relative p-0.5 transition-colors focus:outline-none" title="Live Available">
+<span class="block w-5 h-5 rounded-full bg-surface-container-lowest shadow-md transform translate-x-6 transition-transform"></span>
+</button>
+<span class="font-label-sm text-label-sm text-tertiary font-bold mt-1">IN STOCK</span>
+</div>
+<div class="flex items-center gap-1 bg-surface-container-lowest p-1 rounded-xl shadow-sm">
+<button class="p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined text-base">edit</span>
+</button>
+<button class="p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined text-base">tune</span>
+</button>
+<button class="p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined text-base">content_copy</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-space-md p-space-md rounded-2xl bg-surface-container-low shadow-sm flex flex-col md:flex-row items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-md">
+<div class="w-12 h-12 rounded-xl bg-secondary-fixed/50 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-2xl">monitoring</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-semibold">Service Performance Telemetry</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Average table order fulfillment latency across 6 kitchen stations currently at <strong class="text-on-surface font-semibold">18.4 minutes</strong>.</span>
+</div>
+</div>
+<div class="flex items-center gap-space-sm w-full md:w-auto">
+<div class="flex flex-col text-right">
+<span class="font-label-sm text-label-sm text-on-surface-variant">KDS Capacity</span>
+<span class="font-label-md text-label-md text-tertiary font-bold">Optimal (72%)</span>
+</div>
+<div class="w-24 bg-surface-container-high h-2.5 rounded-full overflow-hidden">
+<div class="bg-tertiary h-full rounded-full w-[72%]"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="xl:col-span-4 flex flex-col gap-space-md sticky top-24">
+<div class="rounded-3xl bg-surface-container-low shadow-[0_12px_32px_-4px_rgba(106,59,45,0.10)] overflow-hidden">
+<div class="px-space-lg py-space-md bg-surface-container-high/60 flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="w-2 h-2 rounded-full bg-primary-container"></span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Dish Engineering Console</h3>
+</div>
+<div class="flex items-center gap-1">
+<span class="font-label-sm text-label-sm bg-surface-container-lowest text-on-surface px-2.5 py-0.5 rounded-md font-semibold">SKU: AWD-041</span>
+<button class="p-1 rounded-full text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined text-base">close</span>
+</button>
+</div>
+</div>
+<div class="p-space-lg flex flex-col gap-space-lg">
+<div class="relative group rounded-2xl overflow-hidden shadow-md">
+<div class="h-44 w-full bg-cover bg-center" data-alt="Culinary close up of Awadhi Dum Murgh Biryani in polished copper handi with steam and mint garnishes on linen table." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuA5NPyrgas13x8KQDaNLsZQZjA8XtsmNMAbHIhMP8fFzptqUMKhbteNXTyUx5EwRtJaHXxn1yw0JepIMjnreTwM4o89hZXCnXYsH8ePPj2hjiuWCDfDWqfvCEA95uqs77wPrDUQzoopCkGynVHJscI76fypt7LH5qkFZtmwqPazg3GyEab0RXsvOhUGluoZTEYFiz1EiWJtifXSWs1-AVZ8-b6xcFBeqRoTlMZYVSY')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-primary/80 via-transparent to-transparent flex items-end justify-between p-space-md">
+<div class="flex flex-col text-on-primary">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-primary-fixed">Guest Facing Visual</span>
+<span class="font-headline-sm text-headline-sm text-on-primary leading-tight">Awadhi Dum Murgh Biryani</span>
+</div>
+<button class="px-space-md py-1.5 rounded-full bg-surface-container-lowest/90 backdrop-blur-md text-primary hover:bg-surface-container-lowest font-label-md text-label-md font-semibold shadow-sm flex items-center gap-1 transition-all">
+<span class="material-symbols-outlined text-sm">photo_camera</span>
+<span>Replace Media</span>
+</button>
+</div>
+</div>
+<div class="p-space-md rounded-2xl bg-surface-container flex items-center justify-between shadow-sm">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-semibold">Live Service Availability</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Toggle instantly across 28 Table QR Menus &amp; POS</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-sm text-label-sm font-bold text-tertiary">Active</span>
+<button class="w-12 h-6 rounded-full bg-tertiary-container relative p-0.5 transition-colors focus:outline-none">
+<span class="block w-5 h-5 rounded-full bg-surface-container-lowest shadow-md transform translate-x-6 transition-transform"></span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-space-md">
+<div class="flex flex-col gap-1">
+<label class="font-label-sm text-label-sm text-on-surface-variant uppercase font-semibold">Menu Category</label>
+<div class="relative">
+<select class="w-full px-space-md py-2.5 rounded-xl bg-surface-container-lowest text-on-surface font-label-md text-label-md font-semibold focus:outline-none shadow-inner appearance-none cursor-pointer">
+<option selected="">Biryanis &amp; Curries</option>
+<option>Chef Specials</option>
+<option>Starters &amp; Kebabs</option>
+</select>
+<span class="material-symbols-outlined absolute right-space-sm top-1/2 -translate-y-1/2 text-outline pointer-events-none text-base">expand_more</span>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-sm text-label-sm text-on-surface-variant uppercase font-semibold">Kitchen Line Routing</label>
+<div class="relative">
+<select class="w-full px-space-md py-2.5 rounded-xl bg-surface-container-lowest text-on-surface font-label-md text-label-md font-semibold focus:outline-none shadow-inner appearance-none cursor-pointer">
+<option selected="">Awadh Handi #1</option>
+<option>Main Line Hot 1</option>
+<option>Expediter Pass</option>
+</select>
+<span class="material-symbols-outlined absolute right-space-sm top-1/2 -translate-y-1/2 text-outline pointer-events-none text-base">expand_more</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-space-md">
+<div class="flex flex-col gap-1">
+<label class="font-label-sm text-label-sm text-on-surface-variant uppercase font-semibold">Base Dine-In Price (₹)</label>
+<div class="relative flex items-center">
+<span class="absolute left-3 text-secondary font-bold font-label-md">₹</span>
+<input class="w-full pl-8 pr-3 py-2.5 rounded-xl bg-surface-container-lowest text-on-surface font-price-md text-price-md font-bold focus:outline-none shadow-inner" type="number" value="790"/>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-sm text-label-sm text-on-surface-variant uppercase font-semibold">Prep SLA Buffer</label>
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-3 text-secondary text-base">schedule</span>
+<input class="w-full pl-9 pr-3 py-2.5 rounded-xl bg-surface-container-lowest text-on-surface font-label-md text-label-md font-semibold focus:outline-none shadow-inner" type="text" value="25 mins"/>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md text-on-surface font-semibold flex items-center gap-1">
+<span>Modifiers &amp; Add-on Pairings</span>
+<span class="text-xs bg-surface-container-high px-2 py-0.5 rounded-full">3 Active</span>
+</span>
+<button class="text-primary hover:text-primary-container font-label-sm text-label-sm font-bold flex items-center gap-0.5">
+<span class="material-symbols-outlined text-xs">add</span>
+<span>Add Group</span>
+</button>
+</div>
+<div class="flex flex-col gap-space-xs">
+<div class="p-space-sm rounded-xl bg-surface-container-lowest shadow-sm flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-secondary text-base">drag_indicator</span>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-semibold">Burani Garlic Raita</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Accompaniment • Cold Larder</span>
+</div>
+</div>
+<div class="flex items-center gap-space-md">
+<span class="font-price-md text-price-md text-primary font-bold">+₹60</span>
+<button class="text-outline hover:text-error transition-colors">
+<span class="material-symbols-outlined text-base">delete</span>
+</button>
+</div>
+</div>
+<div class="p-space-sm rounded-xl bg-surface-container-lowest shadow-sm flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-secondary text-base">drag_indicator</span>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-semibold">Extra Shahi Gravy (180ml)</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Accompaniment • Awadh Handi #1</span>
+</div>
+</div>
+<div class="flex items-center gap-space-md">
+<span class="font-price-md text-price-md text-primary font-bold">+₹90</span>
+<button class="text-outline hover:text-error transition-colors">
+<span class="material-symbols-outlined text-base">delete</span>
+</button>
+</div>
+</div>
+<div class="p-space-sm rounded-xl bg-surface-container-lowest shadow-sm flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-secondary text-base">drag_indicator</span>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-semibold">Boneless Cut Preference</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Butchery Option</span>
+</div>
+</div>
+<div class="flex items-center gap-space-md">
+<span class="font-price-md text-price-md text-on-surface-variant font-bold">+₹0</span>
+<button class="text-outline hover:text-error transition-colors">
+<span class="material-symbols-outlined text-base">delete</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<div class="pt-space-sm flex items-center gap-space-sm">
+<button class="flex-1 py-space-sm rounded-xl bg-primary-container text-on-primary font-label-md text-label-md font-semibold hover:bg-primary shadow-md hover:scale-[1.01] transition-all flex items-center justify-center gap-1.5">
+<span class="material-symbols-outlined text-base">check_circle</span>
+<span>Publish Dish Changes</span>
+</button>
+<button class="px-space-md py-space-sm rounded-xl bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-md text-label-md font-semibold transition-colors">
+              Discard
+            </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div></main></div></body></html>

@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+          "secondary-fixed": "#ffddb2",
+          "on-surface": "#341006",
+          "on-secondary": "#ffffff",
+          "surface": "#fff8f6",
+          "on-secondary-fixed": "#291800",
+          "on-primary-container": "#ff8d9f",
+          "inverse-surface": "#4e2518",
+          "error-container": "#ffdad6",
+          "on-tertiary-container": "#96b88f",
+          "on-primary": "#ffffff",
+          "background": "#fff8f6",
+          "surface-container-lowest": "#ffffff",
+          "secondary": "#815500",
+          "tertiary": "#163215",
+          "on-tertiary": "#ffffff",
+          "outline-variant": "#debfc2",
+          "tertiary-fixed": "#c9ecc0",
+          "on-secondary-container": "#724a00",
+          "on-primary-fixed-variant": "#8b1336",
+          "error": "#ba1a1a",
+          "surface-container": "#ffe9e4",
+          "surface-bright": "#fff8f6",
+          "on-secondary-fixed-variant": "#624000",
+          "inverse-primary": "#ffb2bc",
+          "on-surface-variant": "#574144",
+          "surface-container-highest": "#ffdbd1",
+          "inverse-on-surface": "#ffede8",
+          "on-error-container": "#93000a",
+          "surface-container-high": "#ffe2da",
+          "on-primary-fixed": "#400012",
+          "primary-container": "#850d32",
+          "primary": "#5f001f",
+          "primary-fixed": "#ffd9dd",
+          "tertiary-container": "#2c4929",
+          "surface-container-low": "#fff1ed",
+          "secondary-container": "#feba4f",
+          "on-tertiary-fixed": "#052106",
+          "tertiary-fixed-dim": "#aed0a6",
+          "outline": "#8b7173",
+          "on-tertiary-fixed-variant": "#314e2e",
+          "surface-tint": "#ac2e4c",
+          "surface-dim": "#ffcfc2",
+          "secondary-fixed-dim": "#feba4f",
+          "on-background": "#341006",
+          "on-error": "#ffffff",
+          "primary-fixed-dim": "#ffb2bc",
+          "surface-variant": "#ffdbd1"
+        },
+        "borderRadius": {
+          "DEFAULT": "0.25rem",
+          "lg": "0.5rem",
+          "xl": "0.75rem",
+          "full": "9999px"
+        },
+        "spacing": {
+          "space-md": "1rem",
+          "space-lg": "1.5rem",
+          "margin": "1rem",
+          "space-xs": "0.25rem",
+          "gutter": "1rem",
+          "margin-lg": "3.5rem",
+          "space-sm": "0.5rem",
+          "gutter-md": "1.5rem",
+          "margin-md": "2rem",
+          "gutter-lg": "2rem",
+          "space-xl": "2.5rem"
+        },
+        "fontFamily": {
+          "body-sm": [
+            "Plus Jakarta Sans"
+          ],
+          "headline-lg-mobile": [
+            "Playfair Display"
+          ],
+          "headline-md": [
+            "Playfair Display"
+          ],
+          "headline-sm": [
+            "Playfair Display"
+          ],
+          "label-lg": [
+            "Plus Jakarta Sans"
+          ],
+          "display-lg": [
+            "Playfair Display"
+          ],
+          "body-lg": [
+            "Plus Jakarta Sans"
+          ],
+          "headline-lg": [
+            "Playfair Display"
+          ],
+          "price-md": [
+            "Plus Jakarta Sans"
+          ],
+          "label-sm": [
+            "Plus Jakarta Sans"
+          ],
+          "display-lg-mobile": [
+            "Playfair Display"
+          ],
+          "body-md": [
+            "Plus Jakarta Sans"
+          ],
+          "label-md": [
+            "Plus Jakarta Sans"
+          ],
+          "price-lg": [
+            "Plus Jakarta Sans"
+          ]
+        },
+        "fontSize": {
+          "body-sm": [
+            "0.875rem",
+            {
+              "lineHeight": "1.25rem",
+              "letterSpacing": "0.005em",
+              "fontWeight": "400"
+            }
+          ],
+          "headline-lg-mobile": [
+            "1.75rem",
+            {
+              "lineHeight": "2.25rem",
+              "letterSpacing": "-0.01em",
+              "fontWeight": "600"
+            }
+          ],
+          "headline-md": [
+            "1.5rem",
+            {
+              "lineHeight": "2rem",
+              "letterSpacing": "0em",
+              "fontWeight": "600"
+            }
+          ],
+          "headline-sm": [
+            "1.25rem",
+            {
+              "lineHeight": "1.625rem",
+              "letterSpacing": "0em",
+              "fontWeight": "500"
+            }
+          ],
+          "label-lg": [
+            "0.875rem",
+            {
+              "lineHeight": "1.25rem",
+              "letterSpacing": "0.02em",
+              "fontWeight": "600"
+            }
+          ],
+          "display-lg": [
+            "3.5rem",
+            {
+              "lineHeight": "4rem",
+              "letterSpacing": "-0.02em",
+              "fontWeight": "600"
+            }
+          ],
+          "body-lg": [
+            "1.125rem",
+            {
+              "lineHeight": "1.75rem",
+              "letterSpacing": "-0.005em",
+              "fontWeight": "400"
+            }
+          ],
+          "headline-lg": [
+            "2.25rem",
+            {
+              "lineHeight": "2.75rem",
+              "letterSpacing": "-0.015em",
+              "fontWeight": "600"
+            }
+          ],
+          "price-md": [
+            "1.125rem",
+            {
+              "lineHeight": "1.375rem",
+              "letterSpacing": "0em",
+              "fontWeight": "700"
+            }
+          ],
+          "label-sm": [
+            "0.6875rem",
+            {
+              "lineHeight": "0.875rem",
+              "letterSpacing": "0.06em",
+              "fontWeight": "700"
+            }
+          ],
+          "display-lg-mobile": [
+            "2.5rem",
+            {
+              "lineHeight": "3rem",
+              "letterSpacing": "-0.01em",
+              "fontWeight": "600"
+            }
+          ],
+          "body-md": [
+            "1rem",
+            {
+              "lineHeight": "1.5rem",
+              "letterSpacing": "0em",
+              "fontWeight": "400"
+            }
+          ],
+          "label-md": [
+            "0.75rem",
+            {
+              "lineHeight": "1rem",
+              "letterSpacing": "0.04em",
+              "fontWeight": "600"
+            }
+          ],
+          "price-lg": [
+            "1.5rem",
+            {
+              "lineHeight": "1.75rem",
+              "letterSpacing": "-0.01em",
+              "fontWeight": "700"
+            }
+          ]
+        }
+      },
+    },
+  }</script></head><body class="bg-surface font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-72 bg-surface-container-low z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(106,59,45,0.06)]"><div class="flex flex-col"><div class="h-20 px-space-lg flex items-center gap-space-sm bg-surface-container-low"><img alt="TableServe Emblem Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/ALJJyrA_9Y_jMEUx6M5sTNPfGCD5Y0ahPh9o1cA3CaTIYTw_59G-jkSwrhomEvBsgmBvFCGbRKzj5YyQQhJWnlGjzKJeYqHz1hMy2CfMzNHIzITV3HbQRcAS7bSTIEZCuGeqiZ1qIJd3w670ikC5iF_Mvt6b8uDcqAaqFuDcY9ZqSXVUm0SBOxVd9xxeIJxiIE7PYFHelT_OeHFTbnB0hDGyBChVwA-2tDW_voUItnNkjC4n"/><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-primary leading-none tracking-tight">TableServe</span><span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mt-space-xs">Enterprise Hub</span></div></div><div class="px-space-md py-space-sm"><div class="p-space-sm rounded-xl bg-surface-container flex items-center justify-between shadow-[0_2px_6px_-1px_rgba(106,59,45,0.03)]"><div class="flex items-center gap-space-sm"><span class="w-2.5 h-2.5 rounded-full bg-tertiary-container animate-pulse"></span><div class="flex flex-col"><span class="font-label-md text-label-md text-on-surface font-semibold">Main Salon &amp; Patio</span><span class="font-label-sm text-label-sm text-on-surface-variant">Dinner Service • Shift #4</span></div></div><button class="w-7 h-7 rounded-full bg-surface flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-sm">swap_vert</span></button></div></div><nav class="px-space-md py-space-xs flex flex-col gap-space-xs" data-active-classes="bg-primary-container text-on-primary font-semibold shadow-sm rounded-xl"><a aria-current="page" class="flex items-center gap-space-md px-space-md py-space-sm transition-all bg-primary-container text-on-primary font-semibold shadow-sm rounded-xl" data-path="live-operations-&amp;-orders" href="#"><span class="material-symbols-outlined text-lg">room_service</span><span>Live Operations &amp; Orders</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-xl text-on-surface-variant font-label-lg text-label-lg hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="kitchen-display-(kds)" href="#"><span class="material-symbols-outlined text-lg">outdoor_grill</span><span>Kitchen Display (KDS)</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-xl text-on-surface-variant font-label-lg text-label-lg hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="digital-menu-&amp;-categories" href="#"><span class="material-symbols-outlined text-lg">menu_book</span><span>Digital Menu &amp; Categories</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-xl text-on-surface-variant font-label-lg text-label-lg hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="tables-&amp;-qr-management" href="#"><span class="material-symbols-outlined text-lg">table_restaurant</span><span>Tables &amp; QR Management</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-xl text-on-surface-variant font-label-lg text-label-lg hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="guest-experience-&amp;-feedback" href="#"><span class="material-symbols-outlined text-lg">sentiment_satisfied</span><span>Guest Experience &amp; Feedback</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-xl text-on-surface-variant font-label-lg text-label-lg hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="analytics-&amp;-financials" href="#"><span class="material-symbols-outlined text-lg">bar_chart</span><span>Analytics &amp; Financials</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-xl text-on-surface-variant font-label-lg text-label-lg hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="staff-&amp;-settings" href="#"><span class="material-symbols-outlined text-lg">tune</span><span>Staff &amp; Settings</span></a></nav></div><div class="p-space-md"><div class="p-space-sm rounded-xl bg-surface-container-high/60 flex items-center justify-between"><div class="flex flex-col"><span class="font-label-sm text-label-sm text-on-surface-variant uppercase">POS Sync Status</span><span class="font-label-md text-label-md text-on-surface font-semibold flex items-center gap-1.5 mt-0.5"><span class="w-1.5 h-1.5 rounded-full bg-tertiary-container"></span>Connected</span></div><span class="material-symbols-outlined text-on-surface-variant text-base">cloud_done</span></div></div></aside><div class="pl-72"><header class="fixed top-0 left-72 right-0 h-20 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(106,59,45,0.04)] z-40 px-gutter-md flex items-center justify-between"><div class="flex items-center gap-space-lg"><div class="inline-flex items-center gap-space-sm px-space-md py-space-xs rounded-full bg-surface-container-lowest shadow-[0_2px_8px_-1px_rgba(106,59,45,0.04)]"><span class="w-2.5 h-2.5 rounded-full bg-tertiary-container animate-pulse"></span><span class="font-label-md text-label-md text-tertiary font-semibold">Live &amp; Accepting Orders</span></div><div class="hidden xl:flex items-center gap-space-xs text-on-surface-variant font-body-sm text-body-sm"><span class="material-symbols-outlined text-base text-secondary">schedule</span><span>Active Shift: <strong class="text-on-surface font-semibold font-label-md text-label-md">Evening Prime (17:00 - 23:00)</strong></span></div></div><div class="flex items-center gap-space-md"><div class="relative flex items-center"><button class="flex items-center gap-space-sm px-space-md py-space-xs rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors"><span class="material-symbols-outlined text-base text-primary">table_restaurant</span><span class="font-label-md text-label-md font-semibold">Quick Table Switcher</span><span class="material-symbols-outlined text-sm">expand_more</span></button></div><button aria-label="Notifications" class="relative w-10 h-10 rounded-full bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-xl">notifications</span><span class="absolute top-2 right-2 w-2.5 h-2.5 bg-primary rounded-full ring-2 ring-surface"></span></button><div class="h-8 w-px bg-outline-variant/30"></div><div class="flex items-center gap-space-sm"><div class="flex flex-col text-right hidden sm:flex"><span class="font-label-md text-label-md text-on-surface font-semibold leading-tight">Marcus Vance</span><span class="font-label-sm text-label-sm text-on-surface-variant leading-none">General Manager</span></div><img alt="Profile" class="w-8 h-8 rounded-full object-cover ring-2 ring-primary/20" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC0sghWpJMGtMyFdZgqo4aDTd6TKhPo708dGndOSDURcs0HlhQOqnBFQLaCx878qkBtyvNDmwvQ5dIybrn_P0j8Mn0VRy0j39jrMR2614hUrwp8u6C8GGhTP9HN4Y8QllWx0f-lZCNvXutQEIQKL2g7H8d2vk7VeCne02YNopDgYkDBL5Ph0HoHTF-_SAlESFGmTzjQslMO406Q5-biJA8e6qgcrRukD4rYWhiJ0ds"/></div></div></header><main class="w-full pt-20 bg-surface min-h-screen"><div class="flex flex-col w-full">
+<div class="p-gutter-md xl:p-gutter-lg flex flex-col gap-space-lg">
+<!-- Executive Header Row -->
+<div class="flex flex-col xl:flex-row xl:items-center justify-between gap-space-md">
+<div class="flex flex-col gap-space-xs">
+<div class="flex flex-wrap items-center gap-space-sm">
+<h1 class="font-headline-lg text-headline-lg text-primary tracking-tight font-semibold">Live Operations &amp; Order Command</h1>
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary-fixed/50 text-on-secondary-fixed-variant font-label-md text-label-md">
+<span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+            Shift: Dinner Service • 18:00 - 23:30
+          </span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">Real-time table routing, kitchen pacing, and floor telemetry for TableServe Grand Pavillion.</p>
+</div>
+<!-- Quick Executive Action Bar -->
+<div class="flex flex-wrap items-center gap-space-sm">
+<button class="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-primary-container text-on-primary font-label-lg text-label-lg shadow-sm hover:opacity-95 transition-all transform active:scale-95">
+<span class="material-symbols-outlined text-base">add_circle</span>
+<span>+ Quick Manual Order</span>
+</button>
+<button class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-full bg-surface-container-high text-on-surface font-label-lg text-label-lg hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined text-base text-secondary">grid_view</span>
+<span>Floor Overview</span>
+</button>
+<button class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-full bg-surface-container-high text-on-surface font-label-lg text-label-lg hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined text-base text-error">remove_shopping_cart</span>
+<span>86 Out-of-Stock (3)</span>
+</button>
+<button class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-full bg-surface-container-high text-on-surface font-label-lg text-label-lg hover:bg-surface-container-highest transition-colors" id="soundToggleBtn" onclick="toggleSoundAlert()" title="Toggle audio chime">
+<span class="material-symbols-outlined text-base text-primary" id="soundIcon">volume_up</span>
+<span id="soundLabel">Sound: Enabled (Chime)</span>
+</button>
+</div>
+</div>
+<!-- Real-time KPI Metric Row -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
+<!-- Card 1: Active Orders -->
+<div class="p-space-lg rounded-[22px] bg-surface-container-low shadow-[0_4px_20px_-2px_rgba(106,59,45,0.05),0_2px_6px_-1px_rgba(106,59,45,0.03)] flex flex-col justify-between gap-space-md">
+<div class="flex items-start justify-between">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant font-semibold">Active Orders</span>
+<div class="flex items-baseline gap-2 mt-1">
+<span class="font-headline-lg text-headline-lg font-bold text-on-surface">14</span>
+<span class="font-label-sm text-label-sm text-primary font-semibold">Live in venue</span>
+</div>
+</div>
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-xl">soup_kitchen</span>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<div class="flex items-center justify-between font-label-sm text-label-sm text-on-surface-variant">
+<span>6 Queue</span>
+<span>5 Prep</span>
+<span>3 Ready</span>
+</div>
+<!-- Visual Queue Bar -->
+<div class="w-full h-2 rounded-full bg-surface-container overflow-hidden flex">
+<div class="h-full bg-secondary" style="width: 43%;"></div>
+<div class="h-full bg-primary" style="width: 36%;"></div>
+<div class="h-full bg-tertiary-container" style="width: 21%;"></div>
+</div>
+</div>
+</div>
+<!-- Card 2: Avg. Kitchen Prep Time -->
+<div class="p-space-lg rounded-[22px] bg-surface-container-low shadow-[0_4px_20px_-2px_rgba(106,59,45,0.05),0_2px_6px_-1px_rgba(106,59,45,0.03)] flex flex-col justify-between gap-space-md">
+<div class="flex items-start justify-between">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant font-semibold">Avg. Kitchen Prep Time</span>
+<div class="flex items-baseline gap-2 mt-1">
+<span class="font-headline-lg text-headline-lg font-bold text-on-surface">18.4</span>
+<span class="font-body-md text-body-md text-on-surface font-normal">mins</span>
+</div>
+</div>
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined text-xl">timelapse</span>
+</div>
+</div>
+<div class="flex items-center gap-2 font-label-md text-label-md text-tertiary">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-semibold">
+<span class="material-symbols-outlined text-sm">trending_down</span> -2.3 min
+          </span>
+<span class="text-on-surface-variant font-body-sm text-body-sm">faster than 21 min target</span>
+</div>
+</div>
+<!-- Card 3: Today's Gross Sales -->
+<div class="p-space-lg rounded-[22px] bg-surface-container-low shadow-[0_4px_20px_-2px_rgba(106,59,45,0.05),0_2px_6px_-1px_rgba(106,59,45,0.03)] flex flex-col justify-between gap-space-md">
+<div class="flex items-start justify-between">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant font-semibold">Today's Gross Sales</span>
+<div class="flex items-baseline gap-1 mt-1">
+<span class="font-headline-lg text-headline-lg font-bold text-on-surface">₹1,42,850</span>
+</div>
+</div>
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-xl">payments</span>
+</div>
+</div>
+<div class="flex items-center justify-between font-label-md text-label-md">
+<span class="text-on-surface-variant font-body-sm text-body-sm">98 fulfilled orders</span>
+<span class="inline-flex items-center gap-1 font-semibold text-tertiary">
+<span class="material-symbols-outlined text-sm">arrow_upward</span> +14.8% vs Fri
+          </span>
+</div>
+</div>
+<!-- Card 4: Table Occupancy -->
+<div class="p-space-lg rounded-[22px] bg-surface-container-low shadow-[0_4px_20px_-2px_rgba(106,59,45,0.05),0_2px_6px_-1px_rgba(106,59,45,0.03)] flex flex-col justify-between gap-space-md">
+<div class="flex items-start justify-between">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant font-semibold">Table Occupancy</span>
+<div class="flex items-baseline gap-2 mt-1">
+<span class="font-headline-lg text-headline-lg font-bold text-on-surface">22 / 28</span>
+<span class="font-label-md text-label-md text-secondary font-bold">(78.5%)</span>
+</div>
+</div>
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-xl">table_bar</span>
+</div>
+</div>
+<div class="flex items-center justify-between font-label-md text-label-md">
+<span class="text-on-surface-variant font-body-sm text-body-sm">Turnover: <strong>52m / table</strong></span>
+<span class="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-surface-container font-semibold text-on-surface">6 Free</span>
+</div>
+</div>
+</div>
+<!-- Main Workspace (Two-Column Balanced Layout) -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start">
+<!-- LEFT COLUMN: Live Orders & Urgent Queue (65% width) -->
+<div class="lg:col-span-8 flex flex-col gap-space-md">
+<!-- Filter Tabs Row -->
+<div class="flex items-center justify-between flex-wrap gap-space-sm pb-1">
+<div class="flex items-center gap-1.5 overflow-x-auto p-1 bg-surface-container-low rounded-2xl">
+<button class="order-tab active-tab px-3.5 py-1.5 rounded-xl font-label-md text-label-md font-semibold bg-primary text-on-primary transition-all" onclick="switchTab(this, 'all')">
+              All Orders (14)
+            </button>
+<button class="order-tab px-3.5 py-1.5 rounded-xl font-label-md text-label-md font-semibold text-on-surface-variant hover:bg-surface-container-high transition-all flex items-center gap-1.5" onclick="switchTab(this, 'urgent')">
+<span class="w-2 h-2 rounded-full bg-error animate-ping"></span>
+              Requires Estimate (2)
+            </button>
+<button class="order-tab px-3.5 py-1.5 rounded-xl font-label-md text-label-md font-semibold text-on-surface-variant hover:bg-surface-container-high transition-all" onclick="switchTab(this, 'prep')">
+              Preparing (5)
+            </button>
+<button class="order-tab px-3.5 py-1.5 rounded-xl font-label-md text-label-md font-semibold text-on-surface-variant hover:bg-surface-container-high transition-all" onclick="switchTab(this, 'ready')">
+              Ready to Serve (3)
+            </button>
+<button class="order-tab px-3.5 py-1.5 rounded-xl font-label-md text-label-md font-semibold text-on-surface-variant hover:bg-surface-container-high transition-all" onclick="switchTab(this, 'completed')">
+              Completed (98)
+            </button>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Sort:</span>
+<button class="flex items-center gap-1 font-label-md text-label-md font-semibold text-on-surface bg-surface-container-low px-2.5 py-1 rounded-lg">
+              Priority / Urgency
+              <span class="material-symbols-outlined text-sm">expand_more</span>
+</button>
+</div>
+</div>
+<!-- Orders Stack -->
+<div class="flex flex-col gap-space-md">
+<!-- FEATURED URGENT CARD 1: Ticket #TS-8492 -->
+<div class="p-space-lg rounded-[24px] bg-surface-container-low shadow-[0_4px_24px_-2px_rgba(106,59,45,0.08),0_2px_8px_-1px_rgba(106,59,45,0.04)] relative overflow-hidden transition-all hover:shadow-[0_8px_30px_rgba(106,59,45,0.12)]">
+<!-- Accent Top Stripe for Urgent Attention -->
+<div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-secondary via-error to-primary"></div>
+<div class="flex flex-col gap-space-md mt-1">
+<!-- Header Strip of the Ticket -->
+<div class="flex flex-wrap items-center justify-between gap-space-sm pb-space-sm bg-surface-container-low">
+<div class="flex items-center gap-space-sm flex-wrap">
+<span class="px-3 py-1 rounded-full bg-primary-container text-on-primary font-headline-sm text-headline-sm font-semibold tracking-wide">
+                    Table #04
+                  </span>
+<span class="font-label-lg text-label-lg font-bold text-on-surface">Ticket #TS-8492</span>
+<span class="px-2.5 py-0.5 rounded-full bg-error-container text-on-error-container font-label-sm text-label-sm font-bold uppercase tracking-wider flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-error animate-pulse"></span>
+                    Waiting for Estimate
+                  </span>
+</div>
+<div class="flex items-center gap-space-md">
+<span class="flex items-center gap-1 text-on-surface-variant font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-sm text-error">alarm</span> Placed 3 mins ago
+                  </span>
+<span class="font-price-lg text-price-lg text-primary font-bold">₹1,680</span>
+</div>
+</div>
+<!-- Guest Telemetry & Dish Spread -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-space-md items-center">
+<!-- Customer Details & Order Items (7 cols) -->
+<div class="md:col-span-7 flex flex-col gap-space-sm">
+<div class="flex items-center gap-2 text-on-surface-variant font-body-sm text-body-sm pb-1">
+<span class="material-symbols-outlined text-base text-secondary">person</span>
+<strong class="text-on-surface font-semibold">Aarav Sharma</strong>
+<span>•</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">+91 98201 44321</span>
+<span class="px-2 py-0.5 rounded-md bg-secondary-fixed/50 text-on-secondary-fixed-variant text-[11px] font-bold">Gold Diner</span>
+</div>
+<!-- Item List with Dietary Indicators -->
+<div class="flex flex-col gap-2.5 p-space-sm rounded-xl bg-surface-container">
+<div class="flex items-start justify-between">
+<div class="flex items-start gap-2">
+<!-- Non-Veg Icon Symbol -->
+<div class="w-4 h-4 mt-0.5 rounded-[3px] bg-surface flex items-center justify-center shrink-0">
+<div class="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-b-[7px] border-b-on-surface"></div>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-semibold text-on-surface">1x Awadhi Murgh Biryani</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Boneless • Extra Raita &amp; Brown Onion</span>
+</div>
+</div>
+<span class="font-price-md text-price-md text-on-surface font-bold">₹790</span>
+</div>
+<div class="flex items-start justify-between">
+<div class="flex items-start gap-2">
+<!-- Veg Icon Symbol -->
+<div class="w-4 h-4 mt-0.5 rounded-[3px] bg-surface flex items-center justify-center shrink-0">
+<div class="w-2 h-2 rounded-full bg-tertiary-container"></div>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-semibold text-on-surface">2x Garlic Truffle Naan</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Crisp butter wash</span>
+</div>
+</div>
+<span class="font-price-md text-price-md text-on-surface font-bold">₹540</span>
+</div>
+<div class="flex items-start justify-between">
+<div class="flex items-start gap-2">
+<!-- Veg Icon Symbol -->
+<div class="w-4 h-4 mt-0.5 rounded-[3px] bg-surface flex items-center justify-center shrink-0">
+<div class="w-2 h-2 rounded-full bg-tertiary-container"></div>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-semibold text-on-surface">1x Rose Pistachio Phirni</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Serve chilled after mains</span>
+</div>
+</div>
+<span class="font-price-md text-price-md text-on-surface font-bold">₹350</span>
+</div>
+</div>
+</div>
+<!-- Featured Image Thumbnail (5 cols) -->
+<div class="md:col-span-5 h-44 rounded-xl overflow-hidden relative shadow-sm">
+<img class="w-full h-full object-cover" data-alt="Luxurious Awadhi Murgh Biryani presented in an authentic copper handi dish, garnished with golden fried onions, saffron strands, fresh mint sprigs, and served alongside artisan garlic truffle naan on warm linen tabletop with ambient candlelight and soft ivory tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAxc0p4PFw7gSloYMso0Cp_cuYSEtnfQnTegfsiJTpOttRJL39ABX3poxSI0-8USg5psnB9S-yd-KaAmOwbZD9xi_5wrtJgVpGn4gAIndbWgxcZHbCjaDnWu-huaEyXI9wIqfhG1LBoMcwOeGW14FrufBoff_ePhyl6e6NYzw7kWmxXr6ZrVRmFeCy9deDHPLe6X5XzQpt4KJxq4w9hHZacOr79glsz-fnZtBGqMW8"/>
+<div class="absolute bottom-2 left-2 px-2.5 py-1 rounded-md bg-surface-container-lowest/90 backdrop-blur-md text-[11px] font-bold text-on-surface">
+                    Sous Chef Station #1
+                  </div>
+</div>
+</div>
+<!-- MANAGER ACTION BOX: Set Preparation Estimate -->
+<div class="p-space-md rounded-2xl bg-surface-container-high/70 flex flex-col md:flex-row items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-sm">
+<div class="w-9 h-9 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-lg">touch_app</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-bold text-on-surface">Kitchen Timing Dispatch</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Notify guest phone screen with live countdown timer</span>
+</div>
+</div>
+<div class="flex items-center gap-2 w-full md:w-auto">
+<div class="flex items-center bg-surface rounded-full px-3 py-1.5 shadow-sm">
+<span class="font-label-sm text-label-sm text-on-surface-variant mr-2">Est. Time:</span>
+<input class="w-12 text-center font-bold text-primary font-headline-sm text-headline-sm bg-transparent outline-none" id="prepInput-8492" max="60" min="5" type="number" value="20"/>
+<span class="font-label-sm text-label-sm text-on-surface font-semibold ml-1">mins</span>
+</div>
+<button class="flex-1 md:flex-none inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-primary-container hover:bg-primary text-on-primary font-label-md text-label-md font-semibold transition-all transform active:scale-95 shadow-sm" onclick="dispatchEstimate('TS-8492', '04')">
+<span class="material-symbols-outlined text-base">send</span>
+<span>Set Estimate &amp; Send to Customer Tracker</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- ORDER CARD 2: Ticket #TS-8491 -->
+<div class="p-space-lg rounded-[24px] bg-surface-container-low shadow-[0_4px_20px_-2px_rgba(106,59,45,0.05),0_2px_6px_-1px_rgba(106,59,45,0.03)] flex flex-col gap-space-md transition-all hover:shadow-[0_6px_24px_rgba(106,59,45,0.08)]">
+<div class="flex flex-wrap items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm flex-wrap">
+<span class="px-3 py-1 rounded-full bg-surface-container-high text-on-surface font-headline-sm text-headline-sm font-semibold tracking-wide">
+                  Table #12
+                </span>
+<span class="font-label-lg text-label-lg font-bold text-on-surface">Ticket #TS-8491</span>
+<!-- Timer Countdown Badge with subtle gold/honey aura -->
+<span class="px-3 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-md text-label-md font-bold flex items-center gap-1.5 shadow-[0_0_12px_rgba(254,186,79,0.35)]">
+<span class="material-symbols-outlined text-sm animate-spin">hourglass_top</span>
+                  16 mins remaining
+                </span>
+</div>
+<div class="flex items-center gap-space-md">
+<span class="px-2.5 py-0.5 rounded-full bg-surface-container font-label-sm text-label-sm font-semibold text-secondary">
+                  PREPARING (KITCHEN STATION 2)
+                </span>
+<span class="font-price-lg text-price-lg text-primary font-bold">₹1,440</span>
+</div>
+</div>
+<!-- Content Area -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-space-md items-center">
+<div class="md:col-span-8 flex flex-col gap-space-xs">
+<div class="flex items-center gap-2 text-on-surface-variant font-body-sm text-body-sm pb-1">
+<span class="material-symbols-outlined text-base text-secondary">person</span>
+<strong class="text-on-surface font-semibold">Meera Sen</strong>
+<span>•</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">+91 97112 09843</span>
+<span class="px-2 py-0.2 rounded-md bg-tertiary-fixed text-on-tertiary-fixed text-[11px] font-bold">First Visit</span>
+</div>
+<!-- Items -->
+<div class="p-space-sm rounded-xl bg-surface-container flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-4 h-4 rounded-[3px] bg-surface flex items-center justify-center shrink-0">
+<div class="w-2 h-2 rounded-full bg-tertiary-container"></div>
+</div>
+<span class="font-label-md text-label-md text-on-surface font-semibold">1x Paneer Tikka Angare</span>
+</div>
+<span class="font-price-md text-price-md text-on-surface font-semibold">₹480</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-4 h-4 rounded-[3px] bg-surface flex items-center justify-center shrink-0">
+<div class="w-2 h-2 rounded-full bg-tertiary-container"></div>
+</div>
+<span class="font-label-md text-label-md text-on-surface font-semibold">1x Dal Makhani Fondue</span>
+</div>
+<span class="font-price-md text-price-md text-on-surface font-semibold">₹620</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-4 h-4 rounded-[3px] bg-surface flex items-center justify-center shrink-0">
+<div class="w-2 h-2 rounded-full bg-tertiary-container"></div>
+</div>
+<span class="font-label-md text-label-md text-on-surface font-semibold">2x Butter Roti</span>
+</div>
+<span class="font-price-md text-price-md text-on-surface font-semibold">₹340</span>
+</div>
+</div>
+</div>
+<div class="md:col-span-4 h-32 rounded-xl overflow-hidden shadow-sm">
+<img class="w-full h-full object-cover" data-alt="Exquisite creamy Dal Makhani served in a warm ceramic fondue bowl with sizzling Paneer Tikka cubes grilled over charcoal embers, garnished with micro greens and melted churned butter on an ivory tabletop." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBvilHPxoMlZOdtWJntoCTk3ETzCk3zL3meHFYFz03bWlTDni1VJ5mv5Z7JM9KHp_zlfEY8H4RJpYO99FdRt28h7rtn_u-QJXfyGzQ5fv8QMsURv6_SD2fcZzPAdxh3zbzf77pOc3gmxeiExGZIKkt6-nA25y03dXOULchuObQNtka3Vb1IdrofD_TLmGXAY4nnTc4czCcYNaCQhBYP0VJoORWRZx0ebuV6K6g0VK0"/>
+</div>
+</div>
+<!-- Action buttons for Order 2 -->
+<div class="flex flex-wrap items-center justify-end gap-space-sm pt-space-xs">
+<button class="px-3.5 py-1.5 rounded-full bg-surface-container text-on-surface font-label-md text-label-md hover:bg-surface-container-high transition-colors">
+                View Ticket Details
+              </button>
+<button class="px-3.5 py-1.5 rounded-full bg-secondary-fixed/60 text-on-secondary-fixed font-label-md text-label-md font-semibold hover:bg-secondary-fixed transition-colors flex items-center gap-1.5" onclick="notifyWaiter('12')">
+<span class="material-symbols-outlined text-sm">notifications_active</span> Call Waiter
+              </button>
+<button class="px-4 py-1.5 rounded-full bg-tertiary-container text-on-tertiary font-label-md text-label-md font-semibold hover:opacity-90 transition-opacity flex items-center gap-1.5" onclick="updateOrderStatus('TS-8491', 'Ready')">
+<span class="material-symbols-outlined text-sm">check_circle</span> Update to Ready
+              </button>
+</div>
+</div>
+<!-- ORDER CARD 3: Ticket #TS-8488 -->
+<div class="p-space-lg rounded-[24px] bg-surface-container-low shadow-[0_4px_20px_-2px_rgba(106,59,45,0.05),0_2px_6px_-1px_rgba(106,59,45,0.03)] flex flex-col gap-space-md transition-all hover:shadow-[0_6px_24px_rgba(106,59,45,0.08)]">
+<div class="flex flex-wrap items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm flex-wrap">
+<span class="px-3 py-1 rounded-full bg-surface-container-high text-on-surface font-headline-sm text-headline-sm font-semibold tracking-wide">
+                  Table #07
+                </span>
+<span class="font-label-lg text-label-lg font-bold text-on-surface">Ticket #TS-8488</span>
+<!-- Gleaming Green Badge -->
+<span class="px-3 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-label-md text-label-md font-bold flex items-center gap-1.5 shadow-[0_0_12px_rgba(174,208,166,0.4)]">
+<span class="material-symbols-outlined text-sm">done_all</span>
+                  READY FOR RUNNER
+                </span>
+</div>
+<div class="flex items-center gap-space-md">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Guest: <strong>Rohan Varma</strong></span>
+<span class="font-price-lg text-price-lg text-primary font-bold">₹920</span>
+</div>
+</div>
+<div class="flex flex-col md:flex-row items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-md">
+<div class="w-14 h-14 rounded-xl overflow-hidden shrink-0 shadow-sm">
+<img class="w-full h-full object-cover" data-alt="Two tall chilled smoked berry mocktails in faceted crystal glasses with rosemary sprigs and dry ice smoke plume alongside a basket of golden truffle fries in an upscale restaurant bar setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBrs4TVtU9NmxDeMLq53mQc4Cn-E2G7MV1H9Kgjwk0P3b1T8cr-nB3RCDIuy0i0lBDDUEeYH1X4eBivSn71ezbZ3Raxuxy0Ity1pyFr3X9CicfquANVPP-YP--N_qL6ezeJHFbI8J9NxeUtmzPLWoGZTUWhFDv-_82cJy7pX9VF3L9ha3e1a2Lcbw1lgWuqNeO8BdauZxXOUtI8k1Q1fmCivr8FwMJVeSmcCqbAbRU"/>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-semibold text-on-surface">2x Smoked Berry Mocktails, 1x Truffle Fries</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Bar Counter • Waiting on Expediter Pass</span>
+</div>
+</div>
+<button class="w-full md:w-auto px-5 py-2.5 rounded-full bg-primary-container hover:bg-primary text-on-primary font-label-md text-label-md font-semibold transition-all transform active:scale-95 flex items-center justify-center gap-2" onclick="markServed('TS-8488', this)">
+<span class="material-symbols-outlined text-base">delivery_dining</span>
+<span>Mark Served</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- RIGHT COLUMN: Table Floorplan & Real-Time Sync Station (35% width) -->
+<div class="lg:col-span-4 flex flex-col gap-space-md">
+<!-- Table Floorplan Card -->
+<div class="p-space-lg rounded-[24px] bg-surface-container-low shadow-[0_4px_20px_-2px_rgba(106,59,45,0.05),0_2px_6px_-1px_rgba(106,59,45,0.03)] flex flex-col gap-space-md">
+<div class="flex items-center justify-between">
+<div class="flex flex-col">
+<h3 class="font-headline-sm text-headline-sm font-semibold text-on-surface">Salon &amp; Patio Floorplan</h3>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Real-time table status telemetry (28 Tables)</span>
+</div>
+<button class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-sm">fullscreen</span>
+</button>
+</div>
+<!-- Color Legend -->
+<div class="grid grid-cols-2 gap-2 text-[11px] font-semibold text-on-surface-variant p-2 rounded-xl bg-surface-container">
+<div class="flex items-center gap-1.5">
+<span class="w-2.5 h-2.5 rounded-full bg-primary-container"></span>
+<span>Occupied (16)</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-2.5 h-2.5 rounded-full bg-secondary-container"></span>
+<span>Bill Requested (4)</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-2.5 h-2.5 rounded-full bg-primary-fixed"></span>
+<span>Ordered / Prep (2)</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-2.5 h-2.5 rounded-full bg-surface-container-lowest"></span>
+<span>Available (6)</span>
+</div>
+</div>
+<!-- Mini Interactive Floor Matrix (28 tables: 4 columns x 7 rows) -->
+<div class="grid grid-cols-4 gap-2 pt-1">
+<!-- T01 to T28 with bespoke status classes -->
+<!-- Row 1 -->
+<button class="table-chip p-2 rounded-xl bg-primary-container text-on-primary flex flex-col items-center justify-center gap-0.5 hover:opacity-90 transition-all" onclick="selectTable(1, this)">
+<span class="font-label-sm text-label-sm font-bold">T-01</span>
+<span class="text-[9px] opacity-80">4p</span>
+</button>
+<button class="table-chip p-2 rounded-xl bg-primary-container text-on-primary flex flex-col items-center justify-center gap-0.5 hover:opacity-90 transition-all" onclick="selectTable(2, this)">
+<span class="font-label-sm text-label-sm font-bold">T-02</span>
+<span class="text-[9px] opacity-80">2p</span>
+</button>
+<button class="table-chip p-2 rounded-xl bg-surface-container-lowest text-on-surface flex flex-col items-center justify-center gap-0.5 hover:bg-surface-container-high transition-all" onclick="selectTable(3, this)">
+<span class="font-label-sm text-label-sm font-bold">T-03</span>
+<span class="text-[9px] opacity-60">2p</span>
+</button>
+<button class="table-chip p-2 rounded-xl bg-secondary-container text-on-secondary-container flex flex-col items-center justify-center gap-0.5 shadow-sm transform scale-105 ring-2 ring-primary transition-all" onclick="selectTable(4, this)">
+<span class="font-label-sm text-label-sm font-bold">T-04</span>
+<span class="text-[9px] font-bold">Active</span>
+</button>
+<!-- Row 2 -->
+<button class="table-chip p-2 rounded-xl bg-primary-container text-on-primary flex flex-col items-center justify-center gap-0.5 hover:opacity-90 transition-all" onclick="selectTable(5, this)">
+<span class="font-label-sm text-label-sm font-bold">T-05</span>
+<span class="text-[9px] opacity-80">6p</span>
+</button>
+<button class="table-chip p-2 rounded-xl bg-primary-fixed text-on-primary-fixed flex flex-col items-center justify-center gap-0.5 hover:opacity-90 transition-all" onclick="selectTable(6, this)">
+<span class="font-label-sm text-label-sm font-bold">T-06</span>
+<span class="text-[9px] opacity-80">4p</span>
+</button>
+<button class="table-chip p-2 rounded-xl bg-primary-fixed text-on-primary-fixed flex flex-col items-center justify-center gap-0.5 hover:opacity-90 transition-all" onclick="selectTable(7, this)">
+<span class="font-label-sm text-label-sm font-bold">T-07</span>
+<span class="text-[9px] opacity-80">2p</span>
+</button>
+<button class="table-chip p-2 rounded-xl bg-surface-container-lowest text-on-surface flex flex-col items-center justify-center gap-0.5 hover:bg-surface-container-high transition-all" onclick="selectTable(8, this)">
+<span class="font-label-sm text-label-sm font-bold">T-08</span>
+<span class="text-[9px] opacity-60">4p</span>
+</button>
+<!-- Row 3 -->
+<button class="table-chip p-2 rounded-xl bg-primary-container text-on-primary flex flex-col items-center justify-center gap-0.5 hover:opacity-90 transition-all" onclick="selectTable(9, this)">
+<span class="font-label-sm text-label-sm font-bold">T-09</span>
+<span class="text-[9px] opacity-80">4p</span>
+</button>
+<button class="table-chip p-2 rounded-xl bg-secondary-container text-on-secondary-container flex flex-col items-center justify-center gap-0.5 hover:opacity-90 transition-all" onclick="selectTable(10, this)">
+<span class="font-label-sm text-label-sm font-bold">T-10</span>
+<span class="text-[9px] font-bold">Bill</span>
+</button>
+<button class="table-chip p-2 rounded-xl bg-primary-container text-on-primary flex flex-col items-center justify-center gap-0.5 hover:opacity-90 transition-all" onclick="selectTable(11, this)">
+<span class="font-label-sm text-label-sm font-bold">T-11</span>
+<span class="text-[9px] opacity-80">6p</span>
+</button>
+<button class="table-chip p-2 rounded-xl bg-primary-container text-on-primary flex flex-col items-center justify-center gap-0.5 hover:opacity-90 transition-all" onclick="selectTable(12, this)">
+<span class="font-label-sm text-label-sm font-bold">T-12</span>
+<span class="text-[9px] opacity-80">4p</span>
+</button>
+<!-- Row 4 -->
+<button class="table-chip p-2 rounded-xl bg-surface-container-lowest text-on-surface flex flex-col items-center justify-center gap-0.5 hover:bg-surface-container-high transition-all" onclick="selectTable(13, this)">
+<span class="font-label-sm text-label-sm font-bold">T-13</span>
+<span class="text-[9px] opacity-60">2p</span>
+</button>
+<button class="table-chip p-2 rounded-xl bg-primary-container text-on-primary flex flex-col items-center justify-center gap-0.5 hover:opacity-90 transition-all" onclick="selectTable(14, this)">
+<span class="font-label-sm text-label-sm font-bold">T-14</span>
+<span class="text-[9px] opacity-80">2p</span>
+</button>
+<button class="table-chip p-2 rounded-xl bg-secondary-container text-on-secondary-container flex flex-col items-center justify-center gap-0.5 hover:opacity-90 transition-all" onclick="selectTable(15, this)">
+<span class="font-label-sm text-label-sm font-bold">T-15</span>
+<span class="text-[9px] font-bold">Bill</span>
+</button>
+<button class="table-chip p-2 rounded-xl bg-surface-container-lowest text-on-surface flex flex-col items-center justify-center gap-0.5 hover:bg-surface-container-high transition-all" onclick="selectTable(16, this)">
+<span class="font-label-sm text-label-sm font-bold">T-16</span>
+<span class="text-[9px] opacity-60">8p</span>
+</button>
+<!-- Row 5 -->
+<button class="table-chip p-2 rounded-xl bg-primary-container text-on-primary flex flex-col items-center justify-center gap-0.5 hover:opacity-90 transition-all" onclick="selectTable(17, this)">
+<span class="font-label-sm text-label-sm font-bold">T-17</span>
+<span class="text-[9px] opacity-80">2p</span>
+</button>
+<button class="table-chip p-2 rounded-xl bg-primary-container text-on-primary flex flex-col items-center justify-center gap-0.5 hover:opacity-90 transition-all" onclick="selectTable(18, this)">
+<span class="font-label-sm text-label-sm font-bold">T-18</span>
+<span class="text-[9px] opacity-80">4p</span>
+</button>
+<button class="table-chip p-2 rounded-xl bg-surface-container-lowest text-on-surface flex flex-col items-center justify-center gap-0.5 hover:bg-surface-container-high transition-all" onclick="selectTable(19, this)">
+<span class="font-label-sm text-label-sm font-bold">T-19</span>
+<span class="text-[9px] opacity-60">4p</span>
+</button>
+<button class="table-chip p-2 rounded-xl bg-secondary-container text-on-secondary-container flex flex-col items-center justify-center gap-0.5 hover:opacity-90 transition-all" onclick="selectTable(20, this)">
+<span class="font-label-sm text-label-sm font-bold">T-20</span>
+<span class="text-[9px] font-bold">Bill</span>
+</button>
+<!-- Row 6 & 7 Patio -->
+<button class="table-chip p-2 rounded-xl bg-primary-container text-on-primary flex flex-col items-center justify-center gap-0.5 hover:opacity-90 transition-all" onclick="selectTable(21, this)">
+<span class="font-label-sm text-label-sm font-bold">T-21</span>
+<span class="text-[9px] opacity-80">Patio</span>
+</button>
+<button class="table-chip p-2 rounded-xl bg-primary-container text-on-primary flex flex-col items-center justify-center gap-0.5 hover:opacity-90 transition-all" onclick="selectTable(22, this)">
+<span class="font-label-sm text-label-sm font-bold">T-22</span>
+<span class="text-[9px] opacity-80">Patio</span>
+</button>
+<button class="table-chip p-2 rounded-xl bg-surface-container-lowest text-on-surface flex flex-col items-center justify-center gap-0.5 hover:bg-surface-container-high transition-all" onclick="selectTable(23, this)">
+<span class="font-label-sm text-label-sm font-bold">T-23</span>
+<span class="text-[9px] opacity-60">Patio</span>
+</button>
+<button class="table-chip p-2 rounded-xl bg-primary-container text-on-primary flex flex-col items-center justify-center gap-0.5 hover:opacity-90 transition-all" onclick="selectTable(24, this)">
+<span class="font-label-sm text-label-sm font-bold">T-24</span>
+<span class="text-[9px] opacity-80">Patio</span>
+</button>
+</div>
+</div>
+<!-- Quick QR Action Drawer (Currently for Selected Table 04) -->
+<div class="p-space-lg rounded-[24px] bg-surface-container-low shadow-[0_4px_20px_-2px_rgba(106,59,45,0.05),0_2px_6px_-1px_rgba(106,59,45,0.03)] flex flex-col gap-space-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-secondary-container"></span>
+<h3 class="font-headline-sm text-headline-sm font-semibold text-on-surface" id="selectedTableHeading">Table #04 Selected</h3>
+</div>
+<span class="px-2.5 py-0.5 rounded-full bg-surface-container text-on-surface-variant font-label-sm text-label-sm font-semibold">Active Session</span>
+</div>
+<!-- Mini QR Preview Frame -->
+<div class="p-space-md rounded-2xl bg-surface-container flex items-center gap-space-md">
+<!-- Simulated High-End Stylized QR SVG -->
+<div class="w-20 h-20 rounded-xl bg-surface-container-lowest p-2 shadow-sm shrink-0 flex items-center justify-center">
+<svg class="w-full h-full text-primary" fill="currentColor" viewbox="0 0 100 100">
+<!-- Outer Corner 1 -->
+<rect fill="none" height="28" rx="4" stroke="currentColor" stroke-width="6" width="28" x="5" y="5"></rect>
+<rect fill="currentColor" height="12" rx="2" width="12" x="13" y="13"></rect>
+<!-- Outer Corner 2 -->
+<rect fill="none" height="28" rx="4" stroke="currentColor" stroke-width="6" width="28" x="67" y="5"></rect>
+<rect fill="currentColor" height="12" rx="2" width="12" x="75" y="13"></rect>
+<!-- Outer Corner 3 -->
+<rect fill="none" height="28" rx="4" stroke="currentColor" stroke-width="6" width="28" x="5" y="67"></rect>
+<rect fill="currentColor" height="12" rx="2" width="12" x="13" y="75"></rect>
+<!-- Bespoke Matrix Bits -->
+<rect height="8" rx="1.5" width="8" x="42" y="10"></rect>
+<rect height="6" rx="1" width="6" x="52" y="24"></rect>
+<rect fill="#850D32" height="16" rx="3" width="16" x="42" y="42"></rect>
+<rect height="12" rx="2" width="8" x="68" y="44"></rect>
+<rect height="8" rx="2" width="10" x="44" y="68"></rect>
+<rect height="6" rx="1.5" width="14" x="62" y="66"></rect>
+<rect height="12" rx="2" width="12" x="78" y="76"></rect>
+<circle cx="50" cy="50" fill="#FFF9F2" r="3"></circle>
+</svg>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-bold text-on-surface">tableserve.vip/t04</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Token: <span class="font-mono text-[11px] text-primary">#TS-404-LIVE-82</span></span>
+<span class="font-label-sm text-label-sm text-tertiary mt-1 flex items-center gap-1 font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span> Direct ordering enabled
+              </span>
+</div>
+</div>
+<!-- Drawer Quick Actions -->
+<div class="flex flex-col gap-2">
+<button class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md font-semibold transition-colors" onclick="triggerToast('Downloading Printable Tent Card QR PDF...')">
+<span class="flex items-center gap-2">
+<span class="material-symbols-outlined text-base text-secondary">print</span>
+                Download Printable Tent Card QR
+              </span>
+<span class="material-symbols-outlined text-sm">download</span>
+</button>
+<button class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md font-semibold transition-colors" onclick="triggerToast('QR Session Token Rotated for Table #04')">
+<span class="flex items-center gap-2">
+<span class="material-symbols-outlined text-base text-primary">autorenew</span>
+                Regenerate QR Token
+              </span>
+<span class="material-symbols-outlined text-sm">cached</span>
+</button>
+<button class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-surface-container hover:bg-error-container/40 text-on-surface font-label-md text-label-md font-semibold transition-colors" onclick="triggerToast('Table Access Temporarily Revoked')">
+<span class="flex items-center gap-2 text-error">
+<span class="material-symbols-outlined text-base">block</span>
+                Revoke Table Guest Ordering
+              </span>
+<span class="material-symbols-outlined text-sm text-error">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Recent Guest Feedback Ticker Card -->
+<div class="p-space-lg rounded-[24px] bg-surface-container-low shadow-[0_4px_20px_-2px_rgba(106,59,45,0.05),0_2px_6px_-1px_rgba(106,59,45,0.03)] flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant font-bold">Live Experience Feed</span>
+<span class="px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed text-[11px] font-bold">4.9 / 5.0 Avg</span>
+</div>
+<div class="p-space-sm rounded-2xl bg-surface-container flex flex-col gap-1.5 relative overflow-hidden">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="font-label-md text-label-md font-bold text-on-surface">Table #09</span>
+<span class="text-on-surface-variant font-body-sm text-body-sm">• 4 mins ago</span>
+</div>
+<div class="flex items-center text-secondary font-bold font-label-md text-label-md">
+                5.0 ★
+              </div>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface italic">
+              “Biryani was sensational, love the QR ordering speed! Mocktails arrived in under 4 minutes.”
+            </p>
+</div>
+<div class="p-space-sm rounded-2xl bg-surface-container flex flex-col gap-1.5 opacity-75">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="font-label-md text-label-md font-bold text-on-surface">Table #15</span>
+<span class="text-on-surface-variant font-body-sm text-body-sm">• 18 mins ago</span>
+</div>
+<div class="flex items-center text-secondary font-bold font-label-md text-label-md">
+                5.0 ★
+              </div>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface italic">
+              “Dal Makhani fondue pairing with garlic naan is unmatched. Great ambiance tonight.”
+            </p>
+</div>
+</div>
+</div>
+</div>
+<!-- Notification Toast Element -->
+<div class="fixed bottom-6 right-6 z-50 transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none flex items-center gap-space-sm px-space-md py-space-sm rounded-full bg-inverse-surface text-inverse-on-surface shadow-xl font-label-md text-label-md" id="commandToast">
+<span class="material-symbols-outlined text-tertiary-fixed text-lg">check_circle</span>
+<span id="commandToastMsg">Action completed successfully</span>
+</div>
+</div>
+</div>
+<script>
+  let soundEnabled = true;
+
+  function toggleSoundAlert() {
+    soundEnabled = !soundEnabled;
+    const label = document.getElementById('soundLabel');
+    const icon = document.getElementById('soundIcon');
+    if (soundEnabled) {
+      label.innerText = 'Sound: Enabled (Chime)';
+      icon.innerText = 'volume_up';
+      triggerToast('Audio Chimes Enabled for New Orders');
+    } else {
+      label.innerText = 'Sound: Muted';
+      icon.innerText = 'volume_off';
+      triggerToast('Audio Alerts Silenced');
+    }
+  }
+
+  function dispatchEstimate(ticketId, tableNum) {
+    const input = document.getElementById('prepInput-' + ticketId.replace('TS-', ''));
+    const mins = input ? input.value : 20;
+    triggerToast('Estimate of ' + mins + ' mins sent to Table #' + tableNum + ' guest phone tracker');
+  }
+
+  function updateOrderStatus(ticketId, status) {
+    triggerToast('Order ' + ticketId + ' marked as ' + status);
+  }
+
+  function notifyWaiter(tableNum) {
+    triggerToast('Waiter Paged to Table #' + tableNum + ' for assistance');
+  }
+
+  function markServed(ticketId, btn) {
+    btn.innerHTML = '<span class="material-symbols-outlined text-base">check</span><span>Served</span>';
+    btn.classList.remove('bg-primary-container', 'hover:bg-primary');
+    btn.classList.add('bg-tertiary-container', 'opacity-70');
+    triggerToast('Order ' + ticketId + ' marked delivered to guest table');
+  }
+
+  function selectTable(num, el) {
+    document.querySelectorAll('.table-chip').forEach(c => c.classList.remove('ring-2', 'ring-primary', 'scale-105'));
+    el.classList.add('ring-2', 'ring-primary', 'scale-105');
+    const heading = document.getElementById('selectedTableHeading');
+    if (heading) {
+      heading.innerText = 'Table #' + (num < 10 ? '0' + num : num) + ' Selected';
+    }
+    triggerToast('Loaded telemetry & QR console for Table #' + num);
+  }
+
+  function switchTab(btn, category) {
+    document.querySelectorAll('.order-tab').forEach(t => {
+      t.classList.remove('bg-primary', 'text-on-primary');
+      t.classList.add('text-on-surface-variant');
+    });
+    btn.classList.add('bg-primary', 'text-on-primary');
+    btn.classList.remove('text-on-surface-variant');
+    triggerToast('Filtered queue: ' + btn.innerText.trim());
+  }
+
+  function triggerToast(msg) {
+    const toast = document.getElementById('commandToast');
+    const toastMsg = document.getElementById('commandToastMsg');
+    if (!toast || !toastMsg) return;
+    toastMsg.innerText = msg;
+    toast.classList.remove('translate-y-24', 'opacity-0', 'pointer-events-none');
+    toast.classList.add('translate-y-0', 'opacity-100');
+    setTimeout(() => {
+      toast.classList.add('translate-y-24', 'opacity-0', 'pointer-events-none');
+      toast.classList.remove('translate-y-0', 'opacity-100');
+    }, 2800);
+  }
+</script></main></div></body></html>
