@@ -48,7 +48,6 @@ export function AuthPage({ masterOnly = false, register = false }: { masterOnly?
       await credential.user.reload();
       if (!credential.user.emailVerified) { setVerificationUser(credential.user); setMessage("Verify your email before continuing. You can resend the verification message below."); return; }
       await credential.user.getIdToken(true);
-      await claimPendingStaffInvites();
       const adminRecord = await getDoc(doc(getFirebase().db, "masterAdmins", credential.user.uid));
       if (masterOnly) {
         if (!adminRecord.exists() || adminRecord.data().active !== true || adminRecord.data().role !== "MasterAdmin") throw new Error("This account is not provisioned for Master Admin. Ask a project owner to enable access in Firestore.");
@@ -61,6 +60,7 @@ export function AuthPage({ masterOnly = false, register = false }: { masterOnly?
         navigate("/master/dashboard", { replace: true });
         return;
       }
+      await claimPendingStaffInvites();
       if (nextPath) {
         navigate(nextPath, { replace: true });
         return;

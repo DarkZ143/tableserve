@@ -75,8 +75,9 @@ service cloud.firestore {
         && table.isActive == true && table.qrTokenHash == data.qrTokenHash;
     }
     function linkedGuestRecord(shopId, orderId) {
-      let order = getAfter(/databases/$(database)/documents/restaurants/$(shopId)/orders/$(orderId));
-      return order.exists() && order.data.restaurantId == shopId;
+      let orderPath = /databases/$(database)/documents/restaurants/$(shopId)/orders/$(orderId);
+      let order = getAfter(orderPath);
+      return existsAfter(orderPath) && order.data.restaurantId == shopId;
     }
     function validStatusTransition(from, to) {
       return from == to
