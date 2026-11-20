@@ -8,11 +8,11 @@ export type MenuImportRow = {
 };
 
 const MAX_IMPORT_ROWS = 400;
-const HEADER_NAMES = ["name", "dish", "dish name", "item", "item name", "menu item", "food item", "product"];
-const HEADER_PRICES = ["price", "amount", "rate", "mrp", "selling price", "price inr", "amount inr"];
-const HEADER_CATEGORIES = ["category", "category name", "section", "group", "menu category"];
-const HEADER_DESCRIPTIONS = ["description", "details", "ingredients", "notes", "note"];
-const HEADER_DIETARY = ["dietary type", "dietary", "food type", "type", "veg non veg"];
+const HEADER_NAMES = ["name", "dish", "dish name", "dish title", "item", "item name", "item title", "menu item", "menu item name", "food name", "food item", "product", "product name"];
+const HEADER_PRICES = ["price", "item price", "amount", "amount rs", "rate", "rate rs", "rate inr", "unit rate", "mrp", "cost", "unit price", "unit cost", "selling price", "price inr", "price rs", "price rupees", "amount inr"];
+const HEADER_CATEGORIES = ["category", "category name", "food category", "section", "group", "menu category", "menu section"];
+const HEADER_DESCRIPTIONS = ["description", "item description", "details", "ingredients", "notes", "note"];
+const HEADER_DIETARY = ["dietary type", "dietary", "food type", "veg type", "type", "veg non veg"];
 
 function toText(value: unknown): string {
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return String(value).trim();
@@ -104,8 +104,7 @@ async function parseXlsx(file: File): Promise<MenuImportRow[]> {
   return rows;
 }
 
-function parseCsvRecords(value: string): string[][] {
-  const input = value.replace(/^\uFEFF/, "");
+function parseCsvRecords(input: string, delimiter: string, maxRecords = Number.POSITIVE_INFINITY): string[][] {
   const records: string[][] = [];
   let record: string[] = [];
   let field = "";
@@ -120,11 +119,12 @@ function parseCsvRecords(value: string): string[][] {
       continue;
     }
     if (character === '"' && field.length === 0) quoted = true;
-    else if (character === ",") { record.push(field); field = ""; }
+    else if (character === delimiter) { record.push(field); field = ""; }
     else if (character === "\n" || character === "\r") {
       record.push(field); field = "";
       if (record.some((cell) => cell.trim())) records.push(record);
       record = [];
+      if (records.length >= maxRecords) return records;
       if (character === "\r" && input[index + 1] === "\n") index += 1;
     } else field += character;
   }
@@ -135,8 +135,33 @@ function parseCsvRecords(value: string): string[][] {
   return records;
 }
 
+function detectCsvFormat(value: string) {
+  let input = value.replace(/^\uFEFF/, "");
+  const firstLineEnd = input.search(/[\r\n]/);
+  const firstLine = (firstLineEnd < 0 ? input : input.slice(0, firstLineEnd)).trim();
+  const separatorDirective = /^sep=(,|;|\t|\|)$/i.exec(firstLine);
+  if (separatorDirective) {
+    const lineEndingLength = input.slice(firstLineEnd).startsWith("\r\n") ? 2 : 1;
+    input = firstLineEnd < 0 ? "" : input.slice(firstLineEnd + lineEndingLength);
+    return { input, delimiter: separatorDirective[1] };
+  }
+
+  let delimiter = ",";
+  let bestScore = -1;
+  for (const candidate of [",", ";", "\t", "|"]) {
+    const records = parseCsvRecords(input, candidate, 30);
+    const frequencies = new Map<number, number>();
+    for (const record of records) frequencies.set(record.length, (frequencies.get(record.length) ?? 0) + 1);
+    const [columnCount, consistentRows] = [...frequencies.entries()].sort((left, right) => right[1] - left[1] || right[0] - left[0])[0] ?? [1, 0];
+    const score = columnCount > 1 ? consistentRows * 100 + columnCount : 0;
+    if (score > bestScore) { delimiter = candidate; bestScore = score; }
+  }
+  return { input, delimiter };
+}
+
 async function parseCsv(file: File): Promise<MenuImportRow[]> {
-  const records = parseCsvRecords(await file.text());
+  const { input, delimiter } = detectCsvFormat(await file.text());
+  const records = parseCsvRecords(input, delimiter);
   let headerRow = -1;
   let columns = { category: -1, name: -1, price: -1, description: -1, dietary: -1 };
   for (let rowIndex = 0; rowIndex < Math.min(records.length, 12); rowIndex += 1) {
@@ -154,7 +179,7 @@ async function parseCsv(file: File): Promise<MenuImportRow[]> {
     };
     break;
   }
-  if (headerRow < 0) throw new Error("Could not find Name and Price columns. Add a header row with columns such as Category, Name, Price, Description, Dietary Type.");
+  if (headerRow < 0) throw new Error("Could not find Name and Price columns. Use headers such as Item Name or Dish Name, plus Price, Rate or Cost. CSV supports comma, semicolon and tab separators.");
 
   const rows: MenuImportRow[] = [];
   for (const record of records.slice(headerRow + 1)) {
