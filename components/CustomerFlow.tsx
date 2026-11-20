@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
-import { collection, onSnapshot, orderBy, query, where } from "firebase/firestore";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { ArrowLeft, ArrowRight, Check, ChefHat, CircleHelp, Clock3, LockKeyhole, Minus, Plus, QrCode, Search, ShoppingBag, UtensilsCrossed, X } from "lucide-react";
 import { runFirebaseAction } from "@/lib/firebase-actions";
 import { BrandMark } from "@/components/BrandMark";
@@ -66,13 +66,17 @@ export default function CustomerFlow({ shopId, token }: { shopId: string; token?
     if (!table || !firebaseConfigured) return;
     const { db } = getFirebase();
     const stopCategories = onSnapshot(
-      query(collection(db, "restaurants", table.restaurantId, "categories"), where("isActive", "==", true), orderBy("sortOrder")),
-      (snapshot) => setCategories(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as MenuCategory)),
+      query(collection(db, "restaurants", table.restaurantId, "categories"), where("isActive", "==", true)),
+      (snapshot) => setCategories(snapshot.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() }) as MenuCategory)
+        .sort((left, right) => Number(left.sortOrder ?? 0) - Number(right.sortOrder ?? 0) || left.name.localeCompare(right.name))),
       (error) => setMenuError(error.message),
     );
     const stopItems = onSnapshot(
-      query(collection(db, "restaurants", table.restaurantId, "menuItems"), where("isActive", "==", true), where("isAvailable", "==", true), orderBy("name")),
-      (snapshot) => setItems(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as MenuItem)),
+      query(collection(db, "restaurants", table.restaurantId, "menuItems"), where("isActive", "==", true), where("isAvailable", "==", true)),
+      (snapshot) => setItems(snapshot.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() }) as MenuItem)
+        .sort((left, right) => left.name.localeCompare(right.name))),
       (error) => setMenuError(error.message),
     );
     return () => { stopCategories(); stopItems(); };
