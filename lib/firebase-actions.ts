@@ -156,11 +156,28 @@ export async function runFirebaseAction<TInput extends object, TOutput>(name: st
       if (access.role === "owner" && profile) {
         const tableRows = await getDocs(collection(db, "restaurants", shopId, "tables"));
         const batch = writeBatch(db);
+        const orderingMigrationRef = doc(db, "restaurants", shopId, "auditLogs", "guest-ordering-default-v1");
+        const orderingMigration = await getDoc(orderingMigrationRef);
+        const shouldEnableGuestOrders = !orderingMigration.exists();
         const billing = subscriptionSnapshot.data();
         const needsFirebasePlan = !billing || billing.provider !== "firebase" || billing.planId !== "free" || Number(billing.amountPaise ?? 0) !== 0 || billing.status !== "active";
         const now = Timestamp.now();
         const end = needsFirebasePlan ? Timestamp.fromMillis(now.toMillis() + 100 * 365.25 * 24 * 60 * 60 * 1000) : billing.currentPeriodEnd ?? Timestamp.fromMillis(now.toMillis() + 100 * 365.25 * 24 * 60 * 60 * 1000);
-        batch.set(doc(db, "publicRestaurants", shopId), { restaurantId: shopId, name: profile.name ?? "Restaurant", taxRateBps: Number(profile.taxRateBps ?? 0), serviceFeePaise: Number(profile.serviceFeePaise ?? 0), isAcceptingOrders: profile.isAcceptingOrders === true, platformStatus: profile.platformStatus ?? "active", subscriptionStatus: "active", currentUsage: Number(billing?.currentUsage ?? 0), orderLimit: null, currentPeriodEnd: end, updatedAt: serverTimestamp() }, { merge: true });
+        const acceptsGuestOrders = shouldEnableGuestOrders || profile.isAcceptingOrders === true;
+        batch.set(doc(db, "publicRestaurants", shopId), { restaurantId: shopId, name: profile.name ?? "Restaurant", taxRateBps: Number(profile.taxRateBps ?? 0), serviceFeePaise: Number(profile.serviceFeePaise ?? 0), isAcceptingOrders: acceptsGuestOrders, platformStatus: profile.platformStatus ?? "active", subscriptionStatus: "active", currentUsage: Number(billing?.currentUsage ?? 0), orderLimit: null, currentPeriodEnd: end, updatedAt: serverTimestamp() }, { merge: true });
+        if (shouldEnableGuestOrders) {
+          batch.update(access.restaurant, { isAcceptingOrders: true, updatedAt: serverTimestamp() });
+          batch.set(orderingMigrationRef, {
+            action: "guest_ordering.enabled_by_default",
+            targetType: "restaurant",
+            targetId: shopId,
+            actorUid: access.user.uid,
+            actorEmail: access.user.email ?? null,
+            actorRole: access.role,
+            details: { reason: "One-time default-on rollout for guest ordering." },
+            createdAt: serverTimestamp(),
+          });
+        }
         for (const table of tableRows.docs) {
           const data = table.data();
           batch.set(doc(db, "restaurants", shopId, "publicTables", table.id), { tableNumber: data.tableNumber ?? "", isActive: data.isActive === true, qrTokenHash: data.qrTokenHash ?? null, updatedAt: serverTimestamp() }, { merge: true });
