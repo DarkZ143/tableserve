@@ -62,6 +62,7 @@ export default function AdminConsole({ shopId: routeShopId }: { shopId?: string 
   const [authNotice, setAuthNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [newOrderNotice, setNewOrderNotice] = useState<{ id: string; ticketId: string; tableNumber: string; customerName: string; customerPhone: string } | null>(null);
   const [assignedOrders, setAssignedOrders] = useState<WaiterOrder[]>([]);
   const [orderError, setOrderError] = useState("");
   const [tables, setTables] = useState<TableRecord[]>([]);
@@ -94,6 +95,7 @@ export default function AdminConsole({ shopId: routeShopId }: { shopId?: string 
   const [staffEmail, setStaffEmail] = useState("");
   const [staffRole, setStaffRole] = useState<StaffRole>("kitchen");
   const qrCanvas = useRef<HTMLCanvasElement | null>(null);
+  const observedOrderIds = useRef<Set<string> | null>(null);
 
   useEffect(() => {
     if (!firebaseConfigured) return;
@@ -105,6 +107,7 @@ export default function AdminConsole({ shopId: routeShopId }: { shopId?: string 
       setRestaurantName("");
       setMenuImportRows([]); setMenuImportFileName(""); setMenuError(""); setMenuMessage("");
       setOrders([]); setAssignedOrders([]); setStaff([]); setAuthError("");
+      setNewOrderNotice(null); observedOrderIds.current = null;
       if (nextUser) {
         try {
           await nextUser.reload();
@@ -124,6 +127,7 @@ export default function AdminConsole({ shopId: routeShopId }: { shopId?: string 
   useEffect(() => {
     if (!user || !restaurantId || !role) return;
     const { db } = getFirebase();
+    observedOrderIds.current = null;
     const orderCollection = role === "waiter" ? "assignedOrders" : role === "kitchen" ? "kitchenOrders" : "orders";
     const orderSource = collection(db, "restaurants", restaurantId, orderCollection);
     const orderQuery = role === "waiter"
@@ -131,7 +135,17 @@ export default function AdminConsole({ shopId: routeShopId }: { shopId?: string 
       : query(orderSource, orderBy("createdAt", "desc"), limit(200));
     const stopOrders = onSnapshot(orderQuery, (snapshot) => {
       if (role === "waiter") setAssignedOrders(snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }) as WaiterOrder));
-      else setOrders(snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }) as AdminOrder));
+      else {
+        if ((role === "owner" || role === "manager") && observedOrderIds.current) {
+          const latestNewOrder = snapshot.docs.find((entry) => !observedOrderIds.current?.has(entry.id));
+          if (latestNewOrder) {
+            const data = latestNewOrder.data();
+            setNewOrderNotice({ id: latestNewOrder.id, ticketId: String(data.ticketId ?? ""), tableNumber: String(data.tableNumberSnapshot ?? ""), customerName: String(data.customerName ?? "Guest"), customerPhone: String(data.customerPhone ?? "") });
+          }
+        }
+        observedOrderIds.current = new Set(snapshot.docs.map((entry) => entry.id));
+        setOrders(snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }) as AdminOrder));
+      }
     }, (error) => setOrderError(error.message));
     const stopCategories = onSnapshot(query(collection(db, "restaurants", restaurantId, "categories"), orderBy("sortOrder")), (snapshot) => {
       setCategories(snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }) as MenuCategory));
@@ -501,6 +515,10 @@ export default function AdminConsole({ shopId: routeShopId }: { shopId?: string 
         <select className="admin-mobile-menu field" aria-label="Admin section" value={section} onChange={(event) => setSection(event.target.value as Section)}>{navItems.filter((item) => (!item.managerOnly || isManager) && (!item.ownerOnly || role === "owner") && (!item.waiterOnly || role === "waiter") && (!item.notWaiterOnly || role !== "waiter")).map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select>
       </header>
       <div className="admin-content">
+        {newOrderNotice && (role === "owner" || role === "manager") && <div className="notice" role="status" aria-live="polite" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
+          <div><strong>New order · Table {newOrderNotice.tableNumber} · {newOrderNotice.customerName}</strong><div>{newOrderNotice.customerPhone} · {newOrderNotice.ticketId} · Demo payment (no money charged)</div></div>
+          <div style={{ display: "flex", gap: 8 }}><button className="btn btn-primary btn-small" onClick={() => { setSection("orders"); setNewOrderNotice(null); }}>Open live order</button><button className="icon-button" aria-label="Dismiss new order notice" onClick={() => setNewOrderNotice(null)}><X size={15} /></button></div>
+        </div>}
         {section === "overview" && <>
           <div className="admin-title-row"><div><div className="eyebrow">Service at a glance</div><h1>Live Operations</h1><p>Recent orders from your restaurant’s live Firestore feed.</p></div><button className="btn btn-soft" onClick={() => setSection("orders")}><ClipboardList size={16} /> Open order queue</button></div>
           <div className="admin-grid">

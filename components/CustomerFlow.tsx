@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { collection, doc, onSnapshot, query, where } from "firebase/firestore";
 import { ArrowLeft, ArrowRight, Check, ChefHat, CircleHelp, Clock3, LockKeyhole, Minus, Plus, QrCode, Search, ShoppingBag, UtensilsCrossed, X } from "lucide-react";
 import { runFirebaseAction } from "@/lib/firebase-actions";
 import { BrandMark } from "@/components/BrandMark";
@@ -63,6 +63,28 @@ export default function CustomerFlow({ shopId, token }: { shopId: string; token?
       });
     return () => { cancelled = true; };
   }, [shopId, token]);
+
+  const activeRestaurantId = table?.restaurantId ?? "";
+  useEffect(() => {
+    if (!token || !activeRestaurantId || !firebaseConfigured) return;
+    const { db } = getFirebase();
+    return onSnapshot(doc(db, "publicRestaurants", activeRestaurantId), (snapshot) => {
+      const restaurant = snapshot.data();
+      const periodEnd = restaurant?.currentPeriodEnd as { toMillis?: () => number } | undefined;
+      const periodEndMs = typeof periodEnd?.toMillis === "function" ? periodEnd.toMillis() : null;
+      const orderLimit = restaurant?.orderLimit == null ? null : Number(restaurant.orderLimit);
+      const canAcceptOrders = snapshot.exists()
+        && restaurant?.isAcceptingOrders === true
+        && restaurant?.platformStatus !== "suspended"
+        && restaurant?.subscriptionStatus === "active"
+        && periodEndMs !== null
+        && periodEndMs > Date.now()
+        && (orderLimit === null || Number(restaurant?.currentUsage ?? 0) < orderLimit);
+      setTableState((current) => current?.token === token && current.context.isAcceptingOrders !== canAcceptOrders
+        ? { ...current, context: { ...current.context, isAcceptingOrders: canAcceptOrders } }
+        : current);
+    });
+  }, [activeRestaurantId, token]);
 
   useEffect(() => {
     if (!table || !firebaseConfigured) return;
