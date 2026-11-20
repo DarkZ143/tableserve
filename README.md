@@ -41,8 +41,8 @@ npm run build
 firebase deploy --project YOUR_FIREBASE_PROJECT_ID --only hosting,firestore:rules,firestore:indexes,storage
 ```
 
-Replace `YOUR_FIREBASE_PROJECT_ID` with the project ID used by `.env.local`; this repository does not assume a Firebase CLI project alias. `next build` exports the browser-routed app to `dist`; Firebase Hosting serves it with the SPA rewrite in `firebase.json`.
+`npm run build` exports the browser app to `dist`. `vercel.json` selects the static Other framework preset, builds to `dist`, and rewrites deep links to the SPA entry; `firebase.json` does the same for Firebase Hosting. Replace `YOUR_FIREBASE_PROJECT_ID` with the ID from `.env.local`; the repository does not assume a Firebase CLI project alias.
 
 ## Order totals
 
-The app checks current QR, table, restaurant and menu records in a Firestore transaction before creating an order. Because the browser computes the displayed order total and there is no trusted server runtime, Firestore Security Rules cannot fully recalculate arbitrary item arrays or guarantee that a modified client submitted the menu price. Orders are placed for payment at the restaurant; staff should confirm the displayed items and total against the menu before preparing them. A trusted server would be required for secure online payment or server-authoritative pricing.
+The app checks current QR, table, restaurant and menu records in a Firestore transaction before creating an order. Order creation and displayed totals are handled by the browser client; Firestore Security Rules cannot fully recalculate arbitrary item arrays or guarantee that a modified client submitted the menu price. Orders are placed for payment at the restaurant; staff should confirm the displayed items and total against the menu before preparing them. A trusted order backend would be required for secure online payment or server-authoritative pricing.

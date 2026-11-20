@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Keep dynamic React Router paths available in `next dev`; export a static
-  // SPA bundle for Firebase Hosting only during production builds.
+  // Development keeps client-side routes available; production exports a
+  // static SPA whose hosts rewrite routes such as /t/{restaurantId}/{qrToken}.
   output: process.env.NODE_ENV === "production" ? "export" : undefined,
   distDir: "./dist",
   // Preserve the existing local emulator switch while exposing only this
