@@ -45,6 +45,8 @@ export default function CustomerFlow({ shopId, token }: { shopId: string; token?
   const [note, setNote] = useState("");
   const [checkoutError, setCheckoutError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [checkoutStage, setCheckoutStage] = useState<"details" | "payment">("details");
+  const [checkoutCustomer, setCheckoutCustomer] = useState<GuestForm | null>(null);
   const idempotency = useRef<{ fingerprint: string; key: string } | null>(null);
   const [ticketSearch, setTicketSearch] = useState("");
   const [scanOpen, setScanOpen] = useState(false);
@@ -104,11 +106,15 @@ export default function CustomerFlow({ shopId, token }: { shopId: string; token?
       return [...current, { key, itemId: item.id, item, quantity: 1, variantId: selectedVariant || undefined, addOnIds: selectedAddOns, note: specialNote.trim(), unitPricePaise, labels }];
     });
     setCustomizing(null);
+    setCheckoutStage("details");
+    setCheckoutCustomer(null);
     setMode("menu");
   }
 
   function changeQuantity(key: string, change: number) {
     setCart((current) => current.map((line) => line.key === key ? { ...line, quantity: line.quantity + change } : line).filter((line) => line.quantity > 0));
+    setCheckoutStage("details");
+    setCheckoutCustomer(null);
   }
 
   function addItem(item: MenuItem) {
@@ -146,6 +152,7 @@ export default function CustomerFlow({ shopId, token }: { shopId: string; token?
         idempotencyKey: string;
         customerName: string;
         customerPhone: string;
+        mockPaymentConfirmed: true;
         items: { itemId: string; quantity: number; variantId?: string; addOnIds: string[]; specialInstructions?: string }[];
       }, { ticketId: string }>("placeOrder", {
         shopId,
@@ -153,6 +160,7 @@ export default function CustomerFlow({ shopId, token }: { shopId: string; token?
         idempotencyKey: idempotency.current.key,
         customerName: name,
         customerPhone: phone,
+        mockPaymentConfirmed: true,
         items: requestItems,
       });
       navigate(`/t/${shopId}/${token}/success/${encodeURIComponent(result.ticketId)}`);
@@ -180,7 +188,30 @@ export default function CustomerFlow({ shopId, token }: { shopId: string; token?
 
   function submitGuestForm(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    void handleSubmit(placeOrder)(event);
+    if (checkoutStage === "details") {
+      void handleSubmit((form) => {
+        const name = form.customerName.trim();
+        const phone = form.customerPhone.trim();
+        if (name.length < 2 || name.length > 80) {
+          setError("customerName", { message: "Enter a name between 2 and 80 characters." });
+          return;
+        }
+        if (!/^\+?[0-9()\-\s]{8,20}$/.test(phone)) {
+          setError("customerPhone", { message: "Enter a valid phone number." });
+          return;
+        }
+        setCheckoutError("");
+        setCheckoutCustomer({ customerName: name, customerPhone: phone });
+        setCheckoutStage("payment");
+      })(event);
+      return;
+    }
+    if (!checkoutCustomer) {
+      setCheckoutStage("details");
+      setCheckoutError("Enter your name and phone number before payment.");
+      return;
+    }
+    void placeOrder(checkoutCustomer);
   }
 
   if (token && resolving) return <GuestState title="Finding your table" copy="Checking this table’s secure QR link…" />;
@@ -262,7 +293,7 @@ export default function CustomerFlow({ shopId, token }: { shopId: string; token?
         )}
 
         {mode === "cart" && table && <section className="cart-page">
-          <button className="btn btn-quiet btn-small" onClick={() => setMode("menu")}><ArrowLeft size={15} /> Back to menu</button>
+          <button className="btn btn-quiet btn-small" onClick={() => { setCheckoutStage("details"); setCheckoutCustomer(null); setMode("menu"); }}><ArrowLeft size={15} /> Back to menu</button>
           <div className="menu-heading"><div><div className="eyebrow">Review your order</div><h2>Your cart</h2></div><span className="pill">Table {table.tableNumber} · locked</span></div>
           {cart.length === 0 ? <div className="empty-state"><h3>Your cart is empty</h3><p>Choose a dish from the live restaurant menu.</p><button className="btn btn-primary" onClick={() => setMode("menu")}>Browse menu</button></div> : <>
             <div className="surface-card" style={{ padding: "0 15px" }}>
@@ -272,14 +303,21 @@ export default function CustomerFlow({ shopId, token }: { shopId: string; token?
               </div>)}
             </div>
             <form className="surface-card" style={{ marginTop: 13, padding: 16 }} onSubmit={submitGuestForm}>
-              <div className="eyebrow">Checkout</div><h2 style={{ margin: "4px 0", fontSize: 24 }}>Your table, taken care of.</h2>
+              <div className="eyebrow">{checkoutStage === "details" ? "Checkout · step 1 of 2" : "Checkout · step 2 of 2"}</div><h2 style={{ margin: "4px 0", fontSize: 24 }}>{checkoutStage === "details" ? "Your table, taken care of." : "Pay before your order"}</h2>
               <div className="locked-table"><span><strong>Table {table.tableNumber}</strong><small className="muted" style={{ display: "block", marginTop: 4 }}>This table is linked to your QR code</small></span><span className="locked-label"><LockKeyhole size={14} /> Read only</span></div>
-              <div className="checkout-fields">
+              {checkoutStage === "details" ? <div className="checkout-fields">
                 <label className="field-label">Your name<input className="field" autoComplete="name" {...register("customerName", { required: "Please enter your name.", minLength: { value: 2, message: "Enter at least 2 characters." } })} placeholder="Name for the order" /></label>
                 {errors.customerName && <small className="muted">{errors.customerName.message}</small>}
                 <label className="field-label">Phone number<input className="field" type="tel" autoComplete="tel" {...register("customerPhone", { required: "Please enter your phone number." })} placeholder="For order updates" /></label>
                 {errors.customerPhone && <small className="muted">{errors.customerPhone.message}</small>}
-              </div>
+              </div> : <>
+                <div className="session-card" style={{ marginTop: 13 }}>
+                  <div className="session-main"><span className="hero-symbol" style={{ width: 39, height: 39, margin: 0, fontSize: 16 }}>₹</span><div><strong>Mock payment · demo only</strong><span>No real money will be charged</span></div></div>
+                  <span className="locked-label"><Check size={14} /> Pay first</span>
+                </div>
+                <p className="muted" style={{ margin: "10px 0" }}>Order for {checkoutCustomer?.customerName} · {checkoutCustomer?.customerPhone}. This payment is simulated; connect a payment gateway before using it to collect real money.</p>
+                <button className="btn btn-quiet btn-small" type="button" onClick={() => { setCheckoutStage("details"); setCheckoutError(""); }}>Edit name or phone</button>
+              </>}
               <div className="totals">
                 <div className="totals-row"><span>Items subtotal</span><strong>{money(subtotal)}</strong></div>
                 <div className="totals-row"><span>Tax</span><strong>{money(tax)}</strong></div>
@@ -287,8 +325,8 @@ export default function CustomerFlow({ shopId, token }: { shopId: string; token?
                 <div className="totals-row grand"><span>Order total</span><strong>{money(total)}</strong></div>
               </div>
               {checkoutError && <div className="notice error" style={{ marginBottom: 12 }}>{checkoutError}</div>}
-              <button className="btn btn-primary" type="submit" disabled={submitting || !table.isAcceptingOrders} style={{ width: "100%", minHeight: 52 }}>{submitting ? "Sending your order…" : table.isAcceptingOrders ? "Place order" : "Ordering paused"}<ArrowRight size={17} /></button>
-              <p className="muted" style={{ margin: "10px 0 0", textAlign: "center", fontSize: 10 }}>No online payment is collected by TableServe.</p>
+              <button className="btn btn-primary" type="submit" disabled={submitting || !table.isAcceptingOrders} style={{ width: "100%", minHeight: 52 }}>{submitting ? "Sending your order…" : !table.isAcceptingOrders ? "Ordering paused" : checkoutStage === "details" ? "Continue to payment" : `Pay ${money(total)} (mock) & place order`}<ArrowRight size={17} /></button>
+              <p className="muted" style={{ margin: "10px 0 0", textAlign: "center", fontSize: 10 }}>{checkoutStage === "details" ? "Payment is required before the order is sent." : "Mock payment only. No money will be charged."}</p>
             </form>
           </>}
         </section>}

@@ -65,6 +65,8 @@ service cloud.firestore {
         && data.taxPaise is int && data.taxPaise >= 0
         && data.serviceFeePaise is int && data.serviceFeePaise >= 0
         && data.totalAmountPaise is int && data.totalAmountPaise == data.subtotalPaise + data.taxPaise + data.serviceFeePaise
+        && data.paymentStatus == 'mock_paid' && data.paymentProvider == 'mock'
+        && data.paymentMethod == 'mock' && data.paymentPaidAt == request.time
         && data.items is list && data.items.size() > 0 && data.items.size() <= 50
         && publicRestaurant.isAcceptingOrders == true && publicRestaurant.platformStatus != 'suspended'
         && subscription.subscriptionStatus == 'active'

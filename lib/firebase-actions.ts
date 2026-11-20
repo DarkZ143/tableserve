@@ -132,9 +132,9 @@ export async function runFirebaseAction<TInput extends object, TOutput>(name: st
           ownerUid: user.uid, ownerEmail, ownerName: String(inputData.ownerName).trim(), phone: String(inputData.phone).trim(),
           address: String(inputData.address).trim(), city: String(inputData.city).trim(), state: String(inputData.state).trim(), postalCode: String(inputData.postalCode).trim(),
           cuisine: String(inputData.cuisine ?? "").trim(), timezone: String(inputData.timezone ?? "Asia/Kolkata"), currency: "INR", taxRateBps: 0, serviceFeePaise: 0,
-          isAcceptingOrders: false, platformStatus: "active", subscriptionStatus: "active", planId: "free", lifetimeAcceptedOrders: 0, createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+          isAcceptingOrders: true, platformStatus: "active", subscriptionStatus: "active", planId: "free", lifetimeAcceptedOrders: 0, createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
         });
-        tx.set(doc(db, "publicRestaurants", restaurantRef.id), { restaurantId: restaurantRef.id, name: String(inputData.name).trim(), taxRateBps: 0, serviceFeePaise: 0, isAcceptingOrders: false, platformStatus: "active", subscriptionStatus: "active", currentUsage: 0, orderLimit: null, currentPeriodEnd: periodEnd, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+        tx.set(doc(db, "publicRestaurants", restaurantRef.id), { restaurantId: restaurantRef.id, name: String(inputData.name).trim(), taxRateBps: 0, serviceFeePaise: 0, isAcceptingOrders: true, platformStatus: "active", subscriptionStatus: "active", currentUsage: 0, orderLimit: null, currentPeriodEnd: periodEnd, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
         tx.set(ownerRef, { uid: user.uid, email: ownerEmail, displayName: user.displayName ?? String(inputData.ownerName).trim(), role: "owner", isActive: true, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
         tx.set(membershipRef, { shopId: restaurantRef.id, shopName: String(inputData.name).trim(), role: "owner", isActive: true, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
         tx.set(subscriptionRef, { shopId: restaurantRef.id, planId: "free", planName: chosenPlan.name, amountPaise: 0, orderLimit: null, status: "active", currency: "INR", provider: "firebase", currentUsage: 0, currentPeriodStart: now, currentPeriodEnd: periodEnd, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
@@ -312,6 +312,7 @@ export async function runFirebaseAction<TInput extends object, TOutput>(name: st
       const inputData = args as AnyRecord;
       const items = Array.isArray(inputData.items) ? inputData.items as AnyRecord[] : [];
       if (!items.length || items.length > 50) throw new Error("Add at least one menu item.");
+      if (inputData.mockPaymentConfirmed !== true) throw new Error("Complete the mock payment before placing the order.");
       const customerName = String(inputData.customerName ?? "").trim(); const customerPhone = String(inputData.customerPhone ?? "").trim();
       if (customerName.length < 2 || !/^\+?[0-9()\-\s]{8,20}$/.test(customerPhone)) throw new Error("Enter your name and a valid phone number.");
       const tokenHash = await sha256(String(inputData.qrToken ?? ""));
@@ -363,7 +364,7 @@ export async function runFirebaseAction<TInput extends object, TOutput>(name: st
         const taxRateBps = Number(profile?.taxRateBps ?? 0); const serviceFeePaise = subtotalPaise > 0 ? Number(profile?.serviceFeePaise ?? 0) : 0;
         const taxPaise = Math.round(subtotalPaise * taxRateBps / 10_000); const totalAmountPaise = subtotalPaise + taxPaise + serviceFeePaise;
         const initialEvent = { status: "queued", at: Timestamp.now() };
-        const orderData = { id: orderRef.id, ticketId, restaurantId: shopId, tableId: tableRef.id, qrTokenHash: tokenHash, tableNumberSnapshot: String(tableData?.tableNumber), customerName, customerPhone, items: orderItems, subtotalPaise, taxPaise, serviceFeePaise, totalAmountPaise, status: "queued", estimatedMinutes: null, expectedReadyAt: null, assignedStaffUid: null, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
+        const orderData = { id: orderRef.id, ticketId, restaurantId: shopId, tableId: tableRef.id, qrTokenHash: tokenHash, tableNumberSnapshot: String(tableData?.tableNumber), customerName, customerPhone, items: orderItems, subtotalPaise, taxPaise, serviceFeePaise, totalAmountPaise, paymentStatus: "mock_paid", paymentProvider: "mock", paymentMethod: "mock", paymentPaidAt: serverTimestamp(), status: "queued", estimatedMinutes: null, expectedReadyAt: null, assignedStaffUid: null, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
         tx.set(orderRef, orderData);
         tx.set(doc(db, "restaurants", shopId, "kitchenOrders", orderRef.id), { ticketId, tableNumberSnapshot: orderData.tableNumberSnapshot, items: orderItems.map((line) => ({ name: line.name, quantity: line.quantity, selections: line.selections, specialInstructions: line.specialInstructions })), status: "queued", estimatedMinutes: null, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
         tx.set(doc(db, "restaurants", shopId, "publicTracking", trackingId), { orderId: orderRef.id, ticketId, tableNumber: orderData.tableNumberSnapshot, status: "queued", estimatedMinutes: null, expectedReadyAt: null, statusEvents: [initialEvent], createdAt: serverTimestamp(), updatedAt: serverTimestamp() });

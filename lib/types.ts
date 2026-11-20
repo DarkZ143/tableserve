@@ -59,6 +59,8 @@ export type AdminOrder = {
   taxPaise: number;
   serviceFeePaise: number;
   totalAmountPaise: number;
+  paymentStatus?: "mock_paid" | "pending" | "paid" | "failed";
+  paymentProvider?: "mock" | "razorpay" | "stripe";
   status: OrderStatus;
   assignedStaffUid?: string | null;
   estimatedMinutes: number | null;
