@@ -76,7 +76,7 @@ export default function TrackingView({ ticketId: initialTicket, justPlaced = fal
     <div className="tracking-wrap">
       <header className="tracking-head"><Link className="brand" to="/"><BrandMark /><span><span className="brand-name">TableServe</span><span className="brand-sub">Live order tracking</span></span></Link><Link className="btn btn-quiet btn-small" to="/"><ArrowLeft size={14} /> Menu</Link></header>
       {!tracking && <>
-        {justPlaced && <><div className="success-mark"><Check size={34} /></div><div className="eyebrow" style={{ textAlign: "center" }}>Order placed</div><h1 className="success-title">Order Placed!</h1><p className="success-copy">Please wait, your order is in queue. The preparation estimate will appear when the manager confirms it.</p></>}
+        {justPlaced && <><div className="success-mark"><Check size={34} /></div><div className="eyebrow" style={{ textAlign: "center" }}>Demo payment successful</div><h1 className="success-title">Order sent to restaurant</h1><p className="success-copy">Your order and contact details are in the restaurant’s live queue. The manager’s preparation estimate will appear here once they set it. No real money was charged.</p></>}
         <section className="panel" style={{ marginTop: 20 }}>
           <div className="eyebrow">Track a ticket</div><h2 style={{ margin: "6px 0", fontSize: 24 }}>Your order, at a glance.</h2><p className="muted" style={{ marginTop: 0 }}>Enter the Ticket ID shown after you placed the order.</p>
           <form className="ticket-lookup" onSubmit={submitTicket}><input className="field" value={ticketInput} onChange={(event) => setTicketInput(event.target.value)} required placeholder="TS-…" aria-label="Ticket ID" /><button className="btn btn-primary" type="submit">Track <ArrowRight size={15} /></button></form>
@@ -87,7 +87,7 @@ export default function TrackingView({ ticketId: initialTicket, justPlaced = fal
       </>}
 
       {tracking && <>
-        {justPlaced && <><div className="success-mark"><Check size={34} /></div><div className="eyebrow" style={{ textAlign: "center" }}>Order placed</div><h1 className="success-title">Order Placed!</h1><p className="success-copy">Please wait, your order is in queue. We’ll show the manager’s estimate here once it is confirmed.</p></>}
+        {justPlaced && <><div className="success-mark"><Check size={34} /></div><div className="eyebrow" style={{ textAlign: "center" }}>Demo payment successful</div><h1 className="success-title">Order sent to restaurant</h1><p className="success-copy">Your order and contact details are in the restaurant’s live queue. The manager’s preparation estimate will appear here once they set it. No real money was charged.</p></>}
         <section className="panel ticket-card">
           <div className="ticket-top"><div><div className="eyebrow">Ticket · Table {tracking.tableNumber}</div><div className="ticket-id">{tracking.ticketId}</div></div><button className="btn btn-soft btn-small" onClick={copyTicket}><Copy size={14} /> {copied ? "Copied" : "Copy ID"}</button></div>
           <div className="track-status-card">
