@@ -61,12 +61,21 @@ service cloud.firestore {
         && data.tableId is string && data.qrTokenHash is string
         && data.customerName is string && data.customerName.size() >= 2 && data.customerName.size() <= 80
         && data.customerPhone is string && data.customerPhone.matches('^\\+?[0-9()\\- ]{8,20}$')
+        && (!('customerEmail' in data) || data.customerEmail == '' || (data.customerEmail is string && data.customerEmail.size() <= 254))
+        && data.whatsappBillOptIn is bool
         && data.subtotalPaise is int && data.subtotalPaise >= 0
         && data.taxPaise is int && data.taxPaise >= 0
         && data.serviceFeePaise is int && data.serviceFeePaise >= 0
         && data.totalAmountPaise is int && data.totalAmountPaise == data.subtotalPaise + data.taxPaise + data.serviceFeePaise
-        && data.paymentStatus == 'mock_paid' && data.paymentProvider == 'mock'
-        && data.paymentMethod == 'mock' && data.paymentPaidAt == request.time
+        && ((data.paymentTiming == 'prepaid'
+            && data.paymentStatus == 'pending' && data.paymentProvider == 'manual'
+            && data.paymentMethod == 'upi' && data.paymentPaidAt == null
+            && publicRestaurant.upiEnabled == true && publicRestaurant.upiId is string
+            && publicRestaurant.upiId.matches('^[A-Za-z0-9._-]{2,100}@[A-Za-z0-9.-]{2,64}$'))
+          || (data.paymentTiming == 'pay_after_serve'
+            && data.paymentStatus == 'pending' && data.paymentProvider == 'manual'
+            && data.paymentMethod == 'pay_after_serve' && data.paymentPaidAt == null
+            && (!('payAtRestaurantEnabled' in publicRestaurant) || publicRestaurant.payAtRestaurantEnabled == true)))
         && data.items is list && data.items.size() > 0 && data.items.size() <= 50
         && publicRestaurant.isAcceptingOrders == true && publicRestaurant.platformStatus != 'suspended'
         && subscription.subscriptionStatus == 'active'
@@ -99,7 +108,70 @@ service cloud.firestore {
           && resource.data.assignedStaffUid == request.auth.uid
           && request.resource.data.status == 'served'
           && validStatusTransition(resource.data.status, request.resource.data.status)
-          && changed.hasOnly(['status', 'statusEvents', 'updatedAt']));
+          && changed.hasOnly(['status', 'statusEvents', 'updatedAt']))
+        || (resource.data.status == 'served'
+          && !('customerServedResponse' in resource.data)
+          && request.resource.data.ticketId == resource.data.ticketId
+          && request.resource.data.customerServedResponse is map
+          && request.resource.data.customerServedResponse.keys().hasOnly(['response', 'details', 'createdAt'])
+          && request.resource.data.customerServedResponse.response in ['yes', 'no']
+          && ((request.resource.data.customerServedResponse.response == 'yes'
+              && !('details' in request.resource.data.customerServedResponse))
+            || (request.resource.data.customerServedResponse.response == 'no'
+              && (!('details' in request.resource.data.customerServedResponse)
+                || (request.resource.data.customerServedResponse.details is string
+                  && request.resource.data.customerServedResponse.details.size() <= 500))))
+          && request.resource.data.customerServedResponse.createdAt == request.time
+          && changed.hasOnly(['customerServedResponse']))
+        || (manager(shopId)
+          && resource.data.status == 'served'
+          && 'customerServedResponse' in resource.data
+          && resource.data.customerServedResponse.response == 'no'
+          && !('serviceIssueResolvedAt' in resource.data)
+          && !('serviceIssueResolvedBy' in resource.data)
+          && request.resource.data.serviceIssueResolvedAt == request.time
+          && request.resource.data.serviceIssueResolvedBy == request.auth.uid
+          && request.resource.data.updatedAt == request.time
+          && changed.hasOnly(['serviceIssueResolvedAt', 'serviceIssueResolvedBy', 'updatedAt']))
+        || (manager(shopId)
+          && resource.data.paymentStatus == 'pending'
+          && request.resource.data.paymentStatus == 'paid'
+          && request.resource.data.paymentProvider == 'manual'
+          && request.resource.data.paymentMethod in ['cash', 'upi', 'card']
+          && ((resource.data.paymentTiming == 'pay_after_serve'
+              && resource.data.status == 'served')
+            || (resource.data.paymentTiming == 'prepaid'
+              && resource.data.paymentProvider == 'manual'
+              && resource.data.paymentMethod == 'upi'
+              && resource.data.status != 'cancelled'
+              && request.resource.data.paymentMethod == 'upi'))
+          && request.resource.data.paymentPaidAt == request.time
+          && request.resource.data.updatedAt == request.time
+          && changed.hasOnly(['paymentStatus', 'paymentProvider', 'paymentMethod', 'paymentPaidAt', 'updatedAt']))
+        || (manager(shopId)
+          && resource.data.status == 'served'
+          && resource.data.whatsappBillOptIn == true
+          && request.resource.data.whatsappBillStatus == 'sending'
+          && request.resource.data.whatsappBillSendStartedAt is timestamp
+          && (!('whatsappBillStatus' in resource.data)
+            || resource.data.whatsappBillStatus == 'failed'
+            || (resource.data.whatsappBillStatus == 'sending'
+              && resource.data.whatsappBillSendStartedAt < request.time - duration.value(3, 'm')))
+          && changed.hasOnly(['whatsappBillStatus', 'whatsappBillSendStartedAt']))
+        || (manager(shopId)
+          && resource.data.status == 'served'
+          && resource.data.whatsappBillOptIn == true
+          && resource.data.whatsappBillStatus == 'sending'
+          && request.resource.data.whatsappBillStatus == 'sent'
+          && request.resource.data.whatsappBillSentAt is timestamp
+          && request.resource.data.whatsappMessageId is string
+          && changed.hasOnly(['whatsappBillStatus', 'whatsappBillSentAt', 'whatsappMessageId']))
+        || (manager(shopId)
+          && resource.data.status == 'served'
+          && resource.data.whatsappBillOptIn == true
+          && resource.data.whatsappBillStatus == 'sending'
+          && request.resource.data.whatsappBillStatus == 'failed'
+          && changed.hasOnly(['whatsappBillStatus']));
     }
 
     match /users/{uid} {
@@ -125,7 +197,7 @@ service cloud.firestore {
       allow update: if isPlatformAdmin()
         || (owner(shopId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'name', 'nameKey', 'phone', 'address', 'city', 'state', 'postalCode', 'cuisine', 'timezone',
-          'taxRateBps', 'serviceFeePaise', 'isAcceptingOrders', 'planId', 'subscriptionStatus', 'updatedAt'
+          'taxRateBps', 'serviceFeePaise', 'isAcceptingOrders', 'payAtRestaurantEnabled', 'upiEnabled', 'upiId', 'upiPayeeName', 'planId', 'subscriptionStatus', 'updatedAt'
         ]) && request.resource.data.planId == 'free' && request.resource.data.subscriptionStatus == 'active')
         || (manager(shopId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lifetimeAcceptedOrders', 'updatedAt'])
           && request.resource.data.lifetimeAcceptedOrders >= 0
@@ -142,6 +214,25 @@ service cloud.firestore {
             && request.resource.data.role == 'owner' && request.resource.data.isActive == true)
           || (uid == request.auth.uid && invitationClaim(shopId, uid, request.resource.data));
         allow delete: if owner(shopId) && uid != request.auth.uid;
+      }
+      match /privateIntegrations/{integrationId} {
+        allow get: if manager(shopId) && integrationId == 'whatsapp';
+        allow list: if false;
+        allow create, update: if manager(shopId)
+          && integrationId == 'whatsapp'
+          && request.resource.data.keys().hasOnly([
+            'encryptedAccessToken', 'wabaId', 'phoneNumberId', 'templateName', 'templateLanguage', 'templateStatus',
+            'phoneRegistrationStatus', 'connectedAt'
+          ])
+          && request.resource.data.encryptedAccessToken is string
+          && request.resource.data.wabaId is string
+          && request.resource.data.phoneNumberId is string
+          && request.resource.data.templateName is string
+          && request.resource.data.templateLanguage is string
+          && request.resource.data.templateStatus is string
+          && request.resource.data.phoneRegistrationStatus in ['pending', 'registered', 'needs_attention']
+          && request.resource.data.connectedAt is timestamp;
+        allow delete: if owner(shopId) && integrationId == 'whatsapp';
       }
       match /staffInvites/{inviteId} {
         allow get, list: if manager(shopId) || isPlatformAdmin();
@@ -218,9 +309,9 @@ service cloud.firestore {
         allow list: if false;
         allow create: if linkedGuestRecord(shopId, request.resource.data.orderId)
           && request.resource.data.ticketId == getAfter(/databases/$(database)/documents/restaurants/$(shopId)/orders/$(request.resource.data.orderId)).data.ticketId;
-        allow update: if manager(shopId)
+        allow update: if (manager(shopId)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'statusEvents', 'estimatedMinutes', 'expectedReadyAt', 'updatedAt'])
-          && validStatusTransition(resource.data.status, request.resource.data.status)
+          && validStatusTransition(resource.data.status, request.resource.data.status))
           || (activeStaff(shopId) && role(shopId) == 'kitchen'
             && request.resource.data.status in ['preparing', 'ready']
             && validStatusTransition(resource.data.status, request.resource.data.status)
@@ -229,7 +320,36 @@ service cloud.firestore {
             && get(/databases/$(database)/documents/restaurants/$(shopId)/orders/$(resource.data.orderId)).data.assignedStaffUid == request.auth.uid
             && request.resource.data.status == 'served'
             && validStatusTransition(resource.data.status, request.resource.data.status)
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'statusEvents', 'estimatedMinutes', 'expectedReadyAt', 'updatedAt']));
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'statusEvents', 'estimatedMinutes', 'expectedReadyAt', 'updatedAt']))
+          || (resource.data.status == 'served'
+            && !('customerServedResponse' in resource.data)
+            && request.resource.data.ticketId == resource.data.ticketId
+            && request.resource.data.customerServedResponse is map
+            && request.resource.data.customerServedResponse.keys().hasOnly(['response', 'details', 'createdAt'])
+            && request.resource.data.customerServedResponse.response in ['yes', 'no']
+            && ((request.resource.data.customerServedResponse.response == 'yes'
+                && !('details' in request.resource.data.customerServedResponse))
+              || (request.resource.data.customerServedResponse.response == 'no'
+                && (!('details' in request.resource.data.customerServedResponse)
+                  || (request.resource.data.customerServedResponse.details is string
+                    && request.resource.data.customerServedResponse.details.size() <= 500))))
+            && request.resource.data.customerServedResponse.createdAt == request.time
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['customerServedResponse']))
+          || (manager(shopId)
+            && resource.data.paymentStatus == 'pending'
+            && request.resource.data.paymentStatus == 'paid'
+            && request.resource.data.paymentProvider == 'manual'
+            && request.resource.data.paymentMethod in ['cash', 'upi', 'card']
+            && ((resource.data.paymentTiming == 'pay_after_serve'
+                && resource.data.status == 'served')
+              || (resource.data.paymentTiming == 'prepaid'
+                && resource.data.paymentProvider == 'manual'
+                && resource.data.paymentMethod == 'upi'
+                && resource.data.status != 'cancelled'
+                && request.resource.data.paymentMethod == 'upi'))
+            && request.resource.data.paymentPaidAt == request.time
+            && request.resource.data.updatedAt == request.time
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['paymentStatus', 'paymentProvider', 'paymentMethod', 'paymentPaidAt', 'updatedAt']));
         allow delete: if owner(shopId);
       }
       match /usageEvents/{eventId} {
@@ -260,10 +380,10 @@ service cloud.firestore {
       allow create: if provisionedOwner(shopId) && request.resource.data.restaurantId == shopId;
       allow update: if isPlatformAdmin()
         || (owner(shopId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'name', 'taxRateBps', 'serviceFeePaise', 'isAcceptingOrders', 'updatedAt'
+          'name', 'taxRateBps', 'serviceFeePaise', 'isAcceptingOrders', 'payAtRestaurantEnabled', 'upiEnabled', 'upiId', 'upiPayeeName', 'updatedAt'
         ]))
         || (owner(shopId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'restaurantId', 'name', 'taxRateBps', 'serviceFeePaise', 'isAcceptingOrders', 'platformStatus',
+          'restaurantId', 'name', 'taxRateBps', 'serviceFeePaise', 'isAcceptingOrders', 'payAtRestaurantEnabled', 'upiEnabled', 'upiId', 'upiPayeeName', 'platformStatus',
           'subscriptionStatus', 'currentUsage', 'orderLimit', 'currentPeriodEnd', 'updatedAt'
         ]) && request.resource.data.platformStatus == resource.data.platformStatus
           && request.resource.data.subscriptionStatus == 'active' && request.resource.data.orderLimit == null)

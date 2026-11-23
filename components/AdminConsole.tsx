@@ -3,15 +3,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { createUserWithEmailAndPassword, onAuthStateChanged, sendEmailVerification, signInWithEmailAndPassword, signOut, updateProfile, type User } from "firebase/auth";
-import { collection, limit, onSnapshot, orderBy, query, where } from "firebase/firestore";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { collection, doc, limit, onSnapshot, orderBy, query, where } from "firebase/firestore";
+import { createPortal } from "react-dom";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { QRCodeCanvas } from "qrcode.react";
-import { Activity, ArrowRight, BarChart3, BookOpen, ChefHat, CircleHelp, ClipboardList, Copy, Download, LayoutDashboard, LogOut, Pencil, Plus, Printer, QrCode, RefreshCw, Save, Settings2, ShieldCheck, Table2, ToggleLeft, ToggleRight, Users, X } from "lucide-react";
+import { Mail, MessageCircle } from "lucide-react";
+import { Activity, ArrowRight, BarChart3, BookOpen, ChefHat, CircleHelp, ClipboardList, Copy, Download, ImagePlus, LayoutDashboard, LogOut, Pencil, Plus, Printer, QrCode, RefreshCw, Save, Settings2, ShieldCheck, Table2, ToggleLeft, ToggleRight, Users, X } from "lucide-react";
 import { runFirebaseAction } from "@/lib/firebase-actions";
 import { parseMenuImportFile } from "@/lib/menu-import";
 import { tableQrUrl as buildTableQrUrl } from "@/lib/qr";
 import { BrandMark } from "@/components/BrandMark";
+import EtaCountdown from "@/components/EtaCountdown";
 import { errorMessage, humanizeStatus, money } from "@/lib/format";
 import { firebaseConfigured, getFirebase } from "@/lib/firebase";
 import type { AdminOrder, MenuCategory, MenuItem, OrderStatus, StaffRole, TableRecord, WaiterOrder } from "@/lib/types";
@@ -19,8 +21,13 @@ import type { MenuImportRow } from "@/lib/menu-import";
 
 type Section = "overview" | "orders" | "assigned" | "kitchen" | "menu" | "tables" | "customers" | "analytics" | "history" | "staff" | "settings" | "notifications" | "activity";
 type StaffRecord = { uid: string; email?: string; displayName?: string; role: StaffRole; isActive: boolean };
-type RestaurantSettings = { name: string; taxRateBps: number; serviceFeePaise: number; isAcceptingOrders: boolean };
+type RestaurantSettings = { name: string; taxRateBps: number; serviceFeePaise: number; isAcceptingOrders: boolean; payAtRestaurantEnabled: boolean; upiEnabled: boolean; upiId: string; upiPayeeName: string };
 type SubscriptionNoticeData = { status: string; currentUsage: number; orderLimit: number | null; currentPeriodEndMs: number | null };
+type CloudinaryUploadResult = { secure_url?: string; error?: { message?: string }; bytes?: number; format?: string };
+type DishCropSource = { kind: "file"; file: File } | { kind: "cloudinary"; imageUrl: string };
+type DishCropResult = { kind: "file"; file: File } | { kind: "cloudinary"; imageUrl: string };
+
+const CUSTOMER_APP_ORIGIN = "https://tableserve-mu.vercel.app";
 
 const navItems: { id: Section; label: string; icon: typeof LayoutDashboard; managerOnly?: boolean; ownerOnly?: boolean; waiterOnly?: boolean; notWaiterOnly?: boolean }[] = [
   { id: "overview", label: "Dashboard Overview", icon: LayoutDashboard, managerOnly: true },
@@ -37,6 +44,19 @@ const navItems: { id: Section; label: string; icon: typeof LayoutDashboard; mana
   { id: "notifications", label: "Notifications", icon: CircleHelp, managerOnly: true },
   { id: "activity", label: "Activity Logs", icon: ShieldCheck, managerOnly: true },
 ];
+
+function cloudinaryFolderSegment(value: string, fallback: string) {
+  return value.normalize("NFKC").replace(/[^\p{L}\p{N} _-]/gu, "").trim().replace(/\s+/g, "-").replace(/-+/g, "-").slice(0, 80) || fallback;
+}
+
+function cloudinaryCropUrl(imageUrl: string, crop: { x: number; y: number; width: number; height: number }) {
+  const uploadPath = "/image/upload/";
+  const uploadIndex = imageUrl.indexOf(uploadPath);
+  if (uploadIndex < 0) throw new Error("Could not prepare the Cloudinary crop. Try uploading the image from your device.");
+  const transformation = `c_crop,x_${crop.x},y_${crop.y},w_${crop.width},h_${crop.height}`;
+  const splitAt = uploadIndex + uploadPath.length;
+  return `${imageUrl.slice(0, splitAt)}${transformation}/${imageUrl.slice(splitAt)}`;
+}
 
 function staffRoleLabel(role: StaffRole) {
   if (role === "owner") return "Restaurant owner";
@@ -62,7 +82,12 @@ export default function AdminConsole({ shopId: routeShopId }: { shopId?: string 
   const [authNotice, setAuthNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [orders, setOrders] = useState<AdminOrder[]>([]);
-  const [newOrderNotice, setNewOrderNotice] = useState<{ id: string; ticketId: string; tableNumber: string; customerName: string; customerPhone: string } | null>(null);
+  const [servedOrderNotice, setServedOrderNotice] = useState<AdminOrder | null>(null);
+  const [whatsappBillMessage, setWhatsappBillMessage] = useState("");
+  const [printBillOrder, setPrintBillOrder] = useState<AdminOrder | null>(null);
+  const [collectedPaymentMethod, setCollectedPaymentMethod] = useState<"cash" | "upi" | "card">("cash");
+  const [newOrderNotice, setNewOrderNotice] = useState<{ id: string; ticketId: string; tableNumber: string; customerName: string; customerPhone: string; paymentTiming: "prepaid" | "pay_after_serve"; paymentMethod: "upi" | "pay_after_serve" } | null>(null);
+  const [servedIssueNotice, setServedIssueNotice] = useState<{ id: string; ticketId: string; tableNumber: string; customerName: string; customerPhone: string } | null>(null);
   const [assignedOrders, setAssignedOrders] = useState<WaiterOrder[]>([]);
   const [orderError, setOrderError] = useState("");
   const [tables, setTables] = useState<TableRecord[]>([]);
@@ -90,12 +115,30 @@ export default function AdminConsole({ shopId: routeShopId }: { shopId?: string 
   const [itemPrice, setItemPrice] = useState("");
   const [itemDiet, setItemDiet] = useState<"veg" | "non-veg">("veg");
   const [itemImage, setItemImage] = useState<File | null>(null);
+  const [itemImageCloudinaryUrl, setItemImageCloudinaryUrl] = useState("");
+  const [imageSourceMode, setImageSourceMode] = useState<"local" | "link">("local");
+  const [imageUrlInput, setImageUrlInput] = useState("");
+  const [loadingRemoteImage, setLoadingRemoteImage] = useState(false);
+  const [cropSource, setCropSource] = useState<DishCropSource | null>(null);
+  const [cropOpen, setCropOpen] = useState(false);
+  const [removeItemImage, setRemoveItemImage] = useState(false);
+  const [itemImagePreview, setItemImagePreview] = useState("");
   const [itemVariants, setItemVariants] = useState("");
   const [itemAddOns, setItemAddOns] = useState("");
   const [staffEmail, setStaffEmail] = useState("");
   const [staffRole, setStaffRole] = useState<StaffRole>("kitchen");
   const qrCanvas = useRef<HTMLCanvasElement | null>(null);
   const observedOrderIds = useRef<Set<string> | null>(null);
+  const observedOrderStatuses = useRef<Map<string, OrderStatus> | null>(null);
+  const observedServedIssueIds = useRef<Set<string> | null>(null);
+  const remoteImageAbort = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    if (!itemImage) { setItemImagePreview(""); return; }
+    const previewUrl = URL.createObjectURL(itemImage);
+    setItemImagePreview(previewUrl);
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [itemImage]);
 
   useEffect(() => {
     if (!firebaseConfigured) return;
@@ -107,7 +150,7 @@ export default function AdminConsole({ shopId: routeShopId }: { shopId?: string 
       setRestaurantName("");
       setMenuImportRows([]); setMenuImportFileName(""); setMenuError(""); setMenuMessage("");
       setOrders([]); setAssignedOrders([]); setStaff([]); setAuthError("");
-      setNewOrderNotice(null); observedOrderIds.current = null;
+      setNewOrderNotice(null); setServedIssueNotice(null); setServedOrderNotice(null); observedOrderIds.current = null; observedOrderStatuses.current = null; observedServedIssueIds.current = null;
       if (nextUser) {
         try {
           await nextUser.reload();
@@ -128,6 +171,8 @@ export default function AdminConsole({ shopId: routeShopId }: { shopId?: string 
     if (!user || !restaurantId || !role) return;
     const { db } = getFirebase();
     observedOrderIds.current = null;
+    observedOrderStatuses.current = null;
+    observedServedIssueIds.current = null;
     const orderCollection = role === "waiter" ? "assignedOrders" : role === "kitchen" ? "kitchenOrders" : "orders";
     const orderSource = collection(db, "restaurants", restaurantId, orderCollection);
     const orderQuery = role === "waiter"
@@ -140,9 +185,23 @@ export default function AdminConsole({ shopId: routeShopId }: { shopId?: string 
           const latestNewOrder = snapshot.docs.find((entry) => !observedOrderIds.current?.has(entry.id));
           if (latestNewOrder) {
             const data = latestNewOrder.data();
-            setNewOrderNotice({ id: latestNewOrder.id, ticketId: String(data.ticketId ?? ""), tableNumber: String(data.tableNumberSnapshot ?? ""), customerName: String(data.customerName ?? "Guest"), customerPhone: String(data.customerPhone ?? "") });
+            setNewOrderNotice({ id: latestNewOrder.id, ticketId: String(data.ticketId ?? ""), tableNumber: String(data.tableNumberSnapshot ?? ""), customerName: String(data.customerName ?? "Guest"), customerPhone: String(data.customerPhone ?? ""), paymentTiming: data.paymentTiming === "pay_after_serve" ? "pay_after_serve" : "prepaid", paymentMethod: data.paymentMethod === "upi" ? "upi" : "pay_after_serve" });
           }
         }
+        if ((role === "owner" || role === "manager") && observedOrderStatuses.current) {
+          const latestServedOrder = snapshot.docs.find((entry) => entry.data().status === "served" && observedOrderStatuses.current?.get(entry.id) !== "served");
+          if (latestServedOrder) setServedOrderNotice({ id: latestServedOrder.id, ...latestServedOrder.data() } as AdminOrder);
+        }
+        observedOrderStatuses.current = new Map(snapshot.docs.map((entry) => [entry.id, entry.data().status as OrderStatus]));
+        const servedIssueIds = new Set(snapshot.docs.filter((entry) => entry.data().customerServedResponse?.response === "no" && !entry.data().serviceIssueResolvedAt).map((entry) => entry.id));
+        if ((role === "owner" || role === "manager") && observedServedIssueIds.current) {
+          const latestServedIssue = snapshot.docs.find((entry) => servedIssueIds.has(entry.id) && !observedServedIssueIds.current?.has(entry.id));
+          if (latestServedIssue) {
+            const data = latestServedIssue.data();
+            setServedIssueNotice({ id: latestServedIssue.id, ticketId: String(data.ticketId ?? ""), tableNumber: String(data.tableNumberSnapshot ?? ""), customerName: String(data.customerName ?? "Guest"), customerPhone: String(data.customerPhone ?? "") });
+          }
+        }
+        observedServedIssueIds.current = servedIssueIds;
         observedOrderIds.current = new Set(snapshot.docs.map((entry) => entry.id));
         setOrders(snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }) as AdminOrder));
       }
@@ -155,6 +214,14 @@ export default function AdminConsole({ shopId: routeShopId }: { shopId?: string 
     }, (error) => setMenuError(error.message));
     return () => { stopOrders(); stopCategories(); stopItems(); };
   }, [user, restaurantId, role]);
+
+  useEffect(() => {
+    if (!printBillOrder) return;
+    const afterPrint = () => setPrintBillOrder(null);
+    window.addEventListener("afterprint", afterPrint);
+    const timer = window.setTimeout(() => window.print(), 80);
+    return () => { window.removeEventListener("afterprint", afterPrint); window.clearTimeout(timer); };
+  }, [printBillOrder]);
 
   useEffect(() => {
     if (!user || !restaurantId || !role || section !== "tables") return;
@@ -196,6 +263,7 @@ export default function AdminConsole({ shopId: routeShopId }: { shopId?: string 
   const recentSales = orders.filter((order) => order.status === "served").reduce((sum, order) => sum + order.totalAmountPaise, 0);
   const latestOpen = orders.filter((order) => !["served", "cancelled"].includes(order.status));
   const needsAttention = latestOpen.filter((order) => order.status === "queued" || (order.status === "accepted" && !order.estimatedMinutes));
+  const servedIssues = orders.filter((order) => order.status === "served" && order.customerServedResponse?.response === "no" && !order.serviceIssueResolvedAt);
   const quotaPercent = subscriptionNoticeData?.orderLimit ? Math.floor(subscriptionNoticeData.currentUsage * 100 / subscriptionNoticeData.orderLimit) : 0;
   const subscriptionNeedsAttention = Boolean(subscriptionNoticeData && (
     ["pending_payment", "past_due", "grace_period", "cancelled", "expired"].includes(subscriptionNoticeData.status)
@@ -326,6 +394,93 @@ export default function AdminConsole({ shopId: routeShopId }: { shopId?: string 
     finally { setBusy(false); }
   }
 
+  async function resolveServedIssue(order: Pick<AdminOrder, "id">) {
+    setBusy(true); setOrderError("");
+    try {
+      await runFirebaseAction<{ orderId: string }, { ok: true }>("resolveServedIssue", { orderId: order.id });
+      if (servedIssueNotice?.id === order.id) setServedIssueNotice(null);
+    }
+    catch (error) { setOrderError(errorMessage(error)); }
+    finally { setBusy(false); }
+  }
+
+  async function markOrderPaid(order: Pick<AdminOrder, "id">, method: "cash" | "upi" | "card") {
+    setBusy(true); setOrderError("");
+    try { await runFirebaseAction<{ orderId: string; method: "cash" | "upi" | "card" }, { ok: true }>("markOrderPaid", { orderId: order.id, method }); }
+    catch (error) { setOrderError(errorMessage(error)); }
+    finally { setBusy(false); }
+  }
+
+  function sendWhatsAppBill(order: AdminOrder) {
+    setWhatsappBillMessage("");
+    let phone = (order.customerPhone ?? "").replace(/\D/g, "");
+    if (phone.startsWith("00")) phone = phone.slice(2);
+    if (phone.length === 10) phone = `91${phone}`;
+    else if (phone.length === 11 && phone.startsWith("0")) phone = `91${phone.slice(1)}`;
+    if (phone.length < 10 || phone.length > 15) { setWhatsappBillMessage("Could not prepare the bill: add the guest’s WhatsApp number with country code, for example +91 98765 43210."); return; }
+
+    const ticketUrl = `${window.location.origin}/track/${encodeURIComponent(order.ticketId)}`;
+    const items = order.items.map((item) => `• ${item.quantity} × ${item.name}${item.selections?.length ? ` (${item.selections.join(", ")})` : ""} — ${money(item.lineTotalPaise)}`);
+    const payment = order.paymentStatus === "pending" ? order.paymentMethod === "upi" ? "UPI sent · awaiting restaurant verification" : "Pay at restaurant after serving" : order.paymentStatus === "mock_paid" ? "Prepaid demo (no real payment collected)" : order.paymentStatus === "paid" ? `Paid${order.paymentMethod ? ` · ${order.paymentMethod.toUpperCase()}` : ""}` : "Payment status pending";
+    const message = [
+      `Hello ${order.customerName || "there"},`,
+      `Thank you for dining at *${restaurantName || "our restaurant"}*!`,
+      "",
+      `*Bill · Ticket ${order.ticketId} · Table ${order.tableNumberSnapshot}*`,
+      ...items,
+      "",
+      `Subtotal: ${money(order.subtotalPaise)}`,
+      `Tax: ${money(order.taxPaise)}`,
+      ...(order.serviceFeePaise > 0 ? [`Service fee: ${money(order.serviceFeePaise)}`] : []),
+      `*Total: ${money(order.totalAmountPaise)}*`,
+      `Payment: ${payment}`,
+      "",
+      `Track the order and confirm service: ${ticketUrl}`,
+      "",
+      "Enjoy your meal!",
+    ].join("\n");
+    const text = encodeURIComponent(message);
+    const webUrl = `https://web.whatsapp.com/send?phone=${phone}&text=${text}`;
+    window.location.assign(webUrl);
+  }
+
+  function sendEmailBill(order: AdminOrder) {
+    setOrderError("");
+    const enteredEmail = order.customerEmail || window.prompt("Enter the guest's email address to prepare the bill:");
+    if (!enteredEmail) return;
+    const recipient = enteredEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(recipient)) { setOrderError("Enter a valid guest email address to prepare the bill."); return; }
+    const ticketUrl = `${window.location.origin}/track/${encodeURIComponent(order.ticketId)}`;
+    const itemLines = order.items.map((item) => `  ${item.quantity} × ${item.name}${item.selections?.length ? ` (${item.selections.join(", ")})` : ""} — ${money(item.lineTotalPaise)}`);
+    const payment = order.paymentStatus === "pending" ? order.paymentMethod === "upi" ? "UPI payment submitted; awaiting restaurant verification" : "Pay at restaurant after serving" : order.paymentStatus === "mock_paid" ? "Prepaid demo (no real payment collected)" : order.paymentStatus === "paid" ? `Paid${order.paymentMethod ? ` by ${order.paymentMethod.toUpperCase()}` : ""}` : "Payment status pending";
+    const subject = `Your order bill from ${restaurantName || "Restaurant"} · ${order.ticketId}`;
+    const body = [
+      `Dear ${order.customerName || "Guest"},`,
+      "",
+      `Thank you for choosing ${restaurantName || "our restaurant"}! We hope you enjoyed your meal.`,
+      "",
+      "YOUR ORDER",
+      `Ticket: ${order.ticketId}`,
+      `Table: ${order.tableNumberSnapshot}`,
+      ...itemLines,
+      "",
+      `Subtotal: ${money(order.subtotalPaise)}`,
+      `Tax: ${money(order.taxPaise)}`,
+      ...(order.serviceFeePaise > 0 ? [`Service fee: ${money(order.serviceFeePaise)}`] : []),
+      `Total: ${money(order.totalAmountPaise)}`,
+      `Payment: ${payment}`,
+      "",
+      `Track your order and confirm service: ${ticketUrl}`,
+      "",
+      "If you have any questions about this bill, reply to this email and our team will help.",
+      "",
+      "Warm regards,",
+      restaurantName || "Restaurant team",
+    ].join("\r\n");
+    const encodedRecipient = encodeURIComponent(recipient).replace(/%40/gi, "@");
+    window.location.assign(`mailto:${encodedRecipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+  }
+
   async function assignWaiter(order: AdminOrder, staffUid: string) {
     setBusy(true); setOrderError("");
     try {
@@ -345,10 +500,93 @@ export default function AdminConsole({ shopId: routeShopId }: { shopId?: string 
 
   function showItemEditor(item?: MenuItem) {
     setEditingItem(item ?? null); setItemName(item?.name ?? ""); setItemDescription(item?.description ?? ""); setItemCategory(item?.categoryId ?? categories.find((category) => category.isActive)?.id ?? "");
-    setItemPrice(item ? String(item.pricePaise / 100) : ""); setItemDiet(item?.dietaryType ?? "veg"); setItemImage(null);
+    setItemPrice(item ? String(item.pricePaise / 100) : ""); setItemDiet(item?.dietaryType ?? "veg"); setItemImage(null); setItemImageCloudinaryUrl(""); setImageSourceMode("local"); setImageUrlInput(""); setLoadingRemoteImage(false); setCropSource(null); setCropOpen(false); setRemoveItemImage(false);
     setItemVariants((item?.variants ?? []).map((choice) => `${choice.name}:${(choice.priceDeltaPaise ?? 0) / 100}`).join(", "));
     setItemAddOns((item?.addOns ?? []).map((choice) => `${choice.name}:${(choice.pricePaise ?? 0) / 100}`).join(", "));
     setItemEditorOpen(true); setMenuError(""); setMenuMessage("");
+  }
+
+  function closeItemEditor() {
+    remoteImageAbort.current?.abort();
+    remoteImageAbort.current = null;
+    setLoadingRemoteImage(false);
+    setItemEditorOpen(false);
+    setCropOpen(false);
+    setCropSource(null);
+  }
+
+  function selectItemImage(file?: File) {
+    if (!file) return;
+    setMenuError("");
+    if (!new Set(["image/jpeg", "image/png", "image/webp"]).has(file.type)) { setMenuError("Choose a JPG, PNG, or WebP image."); return; }
+    if (file.size >= 5 * 1024 * 1024) { setMenuError("Choose an image smaller than 5 MB."); return; }
+    setImageSourceMode("local");
+    setCropSource({ kind: "file", file });
+    setCropOpen(true);
+  }
+
+  async function loadImageFromUrl() {
+    const rawUrl = imageUrlInput.trim();
+    setMenuError("");
+    if (itemName.trim().length < 2) { setMenuError("Enter the dish name before loading a link so the photo goes into the right Cloudinary folder."); return; }
+    let sourceUrl: URL;
+    try { sourceUrl = new URL(rawUrl); }
+    catch { setMenuError("Paste a direct HTTPS link to a JPG, PNG, or WebP image."); return; }
+    if (sourceUrl.protocol !== "https:" || sourceUrl.username || sourceUrl.password) { setMenuError("Use a public HTTPS image link without a username or password."); return; }
+    if (sourceUrl.hostname === "localhost" || sourceUrl.hostname.endsWith(".localhost") || sourceUrl.hostname.endsWith(".local") || /^(127\.|10\.|192\.168\.|169\.254\.)/.test(sourceUrl.hostname) || /^172\.(1[6-9]|2\d|3[01])\./.test(sourceUrl.hostname) || sourceUrl.hostname === "::1" || sourceUrl.hostname === "[::1]") {
+      setMenuError("Use a public image link, not a local network address."); return;
+    }
+
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME?.trim();
+    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET?.trim();
+    if (!cloudName || !uploadPreset) { setMenuError("Set the Cloudinary cloud name and unsigned upload preset in .env.local before loading image links."); return; }
+    if (!/^[a-z0-9-]+$/i.test(cloudName)) { setMenuError("The Cloudinary cloud name in .env.local is invalid."); return; }
+
+    const controller = new AbortController();
+    remoteImageAbort.current = controller;
+    setLoadingRemoteImage(true);
+    try {
+      const folder = `${cloudinaryFolderSegment(restaurantName, "Restaurant")}/${restaurantId}/${cloudinaryFolderSegment(itemName.trim(), "Dish")}`;
+      const formData = new FormData();
+      formData.append("file", sourceUrl.toString());
+      formData.append("upload_preset", uploadPreset);
+      formData.append("folder", folder);
+      formData.append("public_id", `Image-${crypto.randomUUID().replaceAll("-", "").slice(0, 10)}`);
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/image/upload`, { method: "POST", body: formData, signal: controller.signal });
+      const uploaded = await response.json() as CloudinaryUploadResult;
+      if (!response.ok) throw new Error(uploaded.error?.message || "Cloudinary could not retrieve that image link. Use a direct public image URL or upload from your device.");
+      if (!uploaded.secure_url?.startsWith("https://")) throw new Error("Cloudinary did not return a secure image URL.");
+      if (uploaded.bytes !== undefined && uploaded.bytes >= 5 * 1024 * 1024) throw new Error("Choose an image smaller than 5 MB.");
+      if (uploaded.format && !new Set(["jpg", "jpeg", "png", "webp"]).has(uploaded.format.toLowerCase())) throw new Error("That link does not point to a JPG, PNG, or WebP image.");
+      setImageSourceMode("link");
+      setCropSource({ kind: "cloudinary", imageUrl: uploaded.secure_url });
+      setCropOpen(true);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      const message = error instanceof TypeError
+        ? "Could not reach Cloudinary. Check your connection, upload preset, and Cloudinary settings."
+        : errorMessage(error);
+      setMenuError(message);
+    } finally {
+      if (remoteImageAbort.current === controller) {
+        remoteImageAbort.current = null;
+        setLoadingRemoteImage(false);
+      }
+    }
+  }
+
+  function applyCroppedImage(result: DishCropResult) {
+    if (result.kind === "file") {
+      setItemImage(result.file);
+      setItemImageCloudinaryUrl("");
+    } else {
+      setItemImage(null);
+      setItemImageCloudinaryUrl(result.imageUrl);
+    }
+    setRemoveItemImage(false);
+    setCropOpen(false);
+    setCropSource(null);
+    setMenuError("");
   }
 
   function parseChoices(source: string, kind: "variant" | "addOn") {
@@ -364,14 +602,24 @@ export default function AdminConsole({ shopId: routeShopId }: { shopId?: string 
     event.preventDefault(); setMenuError(""); setMenuMessage(""); setBusy(true);
     try {
       if (!itemName.trim() || !itemCategory || !Number.isFinite(Number(itemPrice)) || Number(itemPrice) < 0) throw new Error("Enter a name, category, and valid rupee price.");
-      let imageUrl = editingItem?.imageUrl ?? "";
+      let imageUrl = removeItemImage ? "" : itemImageCloudinaryUrl || editingItem?.imageUrl || "";
       if (itemImage) {
-        if (!new Set(["image/jpeg", "image/png", "image/webp"]).has(itemImage.type)) throw new Error("Choose a JPG, PNG, or WebP image.");
         if (itemImage.size >= 5 * 1024 * 1024) throw new Error("Choose an image smaller than 5 MB.");
-        const extension = itemImage.name.split(".").pop()?.toLowerCase() || "jpg";
-        const path = `restaurants/${restaurantId}/menu/${crypto.randomUUID()}.${extension}`;
-        const uploaded = await uploadBytes(ref(getFirebase().storage, path), itemImage, { contentType: itemImage.type });
-        imageUrl = await getDownloadURL(uploaded.ref);
+        const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME?.trim();
+        const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET?.trim();
+        if (!cloudName || !uploadPreset) throw new Error("Set the Cloudinary cloud name and unsigned upload preset in .env.local before uploading photos.");
+        if (!/^[a-z0-9-]+$/i.test(cloudName)) throw new Error("The Cloudinary cloud name in .env.local is invalid.");
+        const folder = `${cloudinaryFolderSegment(restaurantName, "Restaurant")}/${restaurantId}/${cloudinaryFolderSegment(itemName.trim(), "Dish")}`;
+        const formData = new FormData();
+        formData.append("file", itemImage, "Image.jpg");
+        formData.append("upload_preset", uploadPreset);
+        formData.append("folder", folder);
+        formData.append("public_id", `Image-${crypto.randomUUID().replaceAll("-", "").slice(0, 10)}`);
+        const response = await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/image/upload`, { method: "POST", body: formData });
+        const uploaded = await response.json() as CloudinaryUploadResult;
+        if (!response.ok) throw new Error(uploaded.error?.message || "Cloudinary could not upload this dish image.");
+        if (!uploaded.secure_url?.startsWith("https://")) throw new Error("Cloudinary did not return a secure dish image URL.");
+        imageUrl = uploaded.secure_url;
       }
       const payload = {
         itemId: editingItem?.id,
@@ -380,7 +628,7 @@ export default function AdminConsole({ shopId: routeShopId }: { shopId?: string 
         variants: parseChoices(itemVariants, "variant"), addOns: parseChoices(itemAddOns, "addOn"),
       };
       await runFirebaseAction<typeof payload, { id: string }>("saveMenuItem", payload);
-      setItemEditorOpen(false); setMenuMessage(`${itemName.trim()} saved to the live menu.`);
+      setItemEditorOpen(false); setCropOpen(false); setCropSource(null); setMenuMessage(`${itemName.trim()} saved to the live menu.`);
     } catch (error) { setMenuError(errorMessage(error)); }
     finally { setBusy(false); }
   }
@@ -499,10 +747,12 @@ export default function AdminConsole({ shopId: routeShopId }: { shopId?: string 
       {authError && <div className="notice error" style={{ marginTop: 12 }}>{authError}</div>}{authNotice && <div className="notice" style={{ marginTop: 12 }}>{authNotice}</div>}<button className="btn btn-quiet" style={{ marginTop: 12 }} onClick={() => signOut(getFirebase().auth)}><LogOut size={15} /> Sign out</button></section></div>;
   }
 
+  const currentDishImage = itemImagePreview || itemImageCloudinaryUrl || (!removeItemImage ? editingItem?.imageUrl ?? "" : "");
+
   return <div className="admin-shell">
     <aside className="admin-sidebar"><Link className="brand admin-brand" to="/"><BrandMark /><span className="admin-brand-copy"><span className="brand-name">TableServe</span><span className="brand-sub">Restaurant Operations</span><span className="brand-restaurant-name" title={restaurantName}>{restaurantName || "Restaurant"}</span></span></Link>
       <span className="pill"><span className="status-dot" /> Live Firebase data</span>
-      <nav className="admin-nav">{navItems.filter((item) => (!item.managerOnly || isManager) && (!item.ownerOnly || role === "owner") && (!item.waiterOnly || role === "waiter") && (!item.notWaiterOnly || role !== "waiter")).map((item) => { const Icon = item.icon; return <button key={item.id} className={section === item.id ? "active" : ""} onClick={() => setSection(item.id)}><Icon />{item.label}</button>; })}</nav>
+      <nav className="admin-nav">{navItems.filter((item) => (!item.managerOnly || isManager) && (!item.ownerOnly || role === "owner") && (!item.waiterOnly || role === "waiter") && (!item.notWaiterOnly || role !== "waiter")).map((item) => { const Icon = item.icon; return <button key={item.id} className={section === item.id ? "active" : ""} onClick={() => setSection(item.id)}><Icon />{item.label}{item.id === "notifications" && servedIssues.length > 0 && <span className="nav-count">{servedIssues.length}</span>}</button>; })}</nav>
       <div className="admin-sidebar-foot"><strong>{user.displayName || user.email}</strong><br />{role.toUpperCase()} · {restaurantId}<br /><span className="locked-label"><span className="status-dot" /> Access is role checked</span></div>
     </aside>
 
@@ -512,12 +762,21 @@ export default function AdminConsole({ shopId: routeShopId }: { shopId?: string 
           <div className="admin-topbar-brand"><Link className="brand admin-mobile-brand" to="/"><BrandMark /><span><span className="brand-name">TableServe</span><span className="brand-sub">Restaurant Operations</span><span className="brand-restaurant-name" title={restaurantName}>{restaurantName || "Restaurant"}</span></span></Link><span className="eyebrow admin-workspace-label">Restaurant workspace</span></div>
           <div className="admin-topbar-actions"><span className="pill admin-live-pill"><span className="status-dot" /> Live Firebase data</span>{role === "owner" && <Link className="btn btn-soft btn-small admin-subscription-link" to={`/app/${restaurantId}/subscription`}>Subscription</Link>}<Link className="btn btn-quiet btn-small" to="/shops">Switch shop</Link><button className="btn btn-quiet btn-small" onClick={() => signOut(getFirebase().auth)}><LogOut size={14} /> Sign out</button></div>
         </div>
-        <select className="admin-mobile-menu field" aria-label="Admin section" value={section} onChange={(event) => setSection(event.target.value as Section)}>{navItems.filter((item) => (!item.managerOnly || isManager) && (!item.ownerOnly || role === "owner") && (!item.waiterOnly || role === "waiter") && (!item.notWaiterOnly || role !== "waiter")).map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select>
+        <select className="admin-mobile-menu field" aria-label="Admin section" value={section} onChange={(event) => setSection(event.target.value as Section)}>{navItems.filter((item) => (!item.managerOnly || isManager) && (!item.ownerOnly || role === "owner") && (!item.waiterOnly || role === "waiter") && (!item.notWaiterOnly || role !== "waiter")).map((item) => <option key={item.id} value={item.id}>{item.label}{item.id === "notifications" && servedIssues.length > 0 ? ` (${servedIssues.length})` : ""}</option>)}</select>
       </header>
       <div className="admin-content">
+        {whatsappBillMessage && <div className={`notice ${/could not|did not|needs|error|failed|blocked|country code/i.test(whatsappBillMessage) ? "error" : ""}`} role="status" style={{ marginBottom: 14 }}>{whatsappBillMessage}</div>}
         {newOrderNotice && (role === "owner" || role === "manager") && <div className="notice" role="status" aria-live="polite" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
-          <div><strong>New order · Table {newOrderNotice.tableNumber} · {newOrderNotice.customerName}</strong><div>{newOrderNotice.customerPhone} · {newOrderNotice.ticketId} · Demo payment (no money charged)</div></div>
+          <div><strong>New order · Table {newOrderNotice.tableNumber} · {newOrderNotice.customerName}</strong><div>{newOrderNotice.customerPhone} · {newOrderNotice.ticketId} · {newOrderNotice.paymentMethod === "upi" ? "UPI payment awaiting verification" : "Pay at restaurant after serving"}</div></div>
           <div style={{ display: "flex", gap: 8 }}><button className="btn btn-primary btn-small" onClick={() => { setSection("orders"); setNewOrderNotice(null); }}>Open live order</button><button className="icon-button" aria-label="Dismiss new order notice" onClick={() => setNewOrderNotice(null)}><X size={15} /></button></div>
+        </div>}
+        {servedIssueNotice && (role === "owner" || role === "manager") && <div className="notice error" role="alert" aria-live="assertive" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
+          <div><strong>Guest needs help · Table {servedIssueNotice.tableNumber}</strong><div>{servedIssueNotice.customerName} · {servedIssueNotice.ticketId}{servedIssueNotice.customerPhone ? ` · ${servedIssueNotice.customerPhone}` : ""}</div></div>
+          <div style={{ display: "flex", gap: 8 }}><button className="btn btn-soft btn-small" onClick={() => { setSection("notifications"); setServedIssueNotice(null); }}>Open guest report <ArrowRight size={13} /></button><button className="icon-button" aria-label="Dismiss guest report notice" onClick={() => setServedIssueNotice(null)}><X size={15} /></button></div>
+        </div>}
+        {servedOrderNotice && (role === "owner" || role === "manager") && <div className="notice served-order-notice" role="status" aria-live="polite" style={{ marginBottom: 14 }}>
+          <div><strong>Order served · Table {servedOrderNotice.tableNumberSnapshot}</strong><div>{servedOrderNotice.ticketId} · {servedOrderNotice.customerName ?? "Guest"} · {money(servedOrderNotice.totalAmountPaise)}</div></div>
+          <div className="served-order-notice-actions"><button className="btn btn-primary btn-small" onClick={() => { setPrintBillOrder(servedOrderNotice); setServedOrderNotice(null); }}><Printer size={14} /> Print Bill</button><button className="btn btn-soft btn-small" onClick={() => sendEmailBill(servedOrderNotice)}><Mail size={14} />{servedOrderNotice.customerEmail ? "Email Bill" : "Enter email"}</button><button className="btn btn-soft btn-small" onClick={() => sendWhatsAppBill(servedOrderNotice)}><MessageCircle size={14} />WhatsApp Bill</button>{servedOrderNotice.paymentTiming === "pay_after_serve" && servedOrderNotice.paymentStatus === "pending" && <><select className="field" aria-label="Payment received by" value={collectedPaymentMethod} onChange={(event) => setCollectedPaymentMethod(event.target.value as "cash" | "upi" | "card")}><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option></select><button className="btn btn-soft btn-small" disabled={busy} onClick={() => void markOrderPaid(servedOrderNotice, collectedPaymentMethod)}>Mark paid</button></>}{servedOrderNotice.paymentMethod === "upi" && servedOrderNotice.paymentStatus === "pending" && <button className="btn btn-soft btn-small" disabled={busy} onClick={() => void markOrderPaid(servedOrderNotice, "upi")}>Confirm UPI paid</button>}<button className="icon-button" aria-label="Dismiss served order notice" onClick={() => setServedOrderNotice(null)}><X size={15} /></button></div>
         </div>}
         {section === "overview" && <>
           <div className="admin-title-row"><div><div className="eyebrow">Service at a glance</div><h1>Live Operations</h1><p>Recent orders from your restaurant’s live Firestore feed.</p></div><button className="btn btn-soft" onClick={() => setSection("orders")}><ClipboardList size={16} /> Open order queue</button></div>
@@ -528,20 +787,20 @@ export default function AdminConsole({ shopId: routeShopId }: { shopId?: string 
             <Metric label="Served order value" value={money(recentSales)} detail="From served orders in this feed" />
           </div>
           {orderError && <div className="notice error" style={{ marginTop: 14 }}>{orderError}</div>}
-          <div className="admin-columns"><section className="panel"><div className="panel-heading"><h2>Current order queue</h2><button className="btn btn-quiet btn-small" onClick={() => setSection("orders")}>View all</button></div><OrderList orders={orders.filter((order) => !["served", "cancelled"].includes(order.status)).slice(0, 4)} role={role} busy={busy} etaValues={etaValues} onEta={(id, value) => setEtaValues((current) => ({ ...current, [id]: value }))} saveEta={saveEta} changeStatus={setOrderStatus} staff={staff} assignWaiter={assignWaiter} canAssignWaiters={role === "owner"} /></section>
+          <div className="admin-columns"><section className="panel"><div className="panel-heading"><h2>Current order queue</h2><button className="btn btn-quiet btn-small" onClick={() => setSection("orders")}>View all</button></div><OrderList orders={orders.filter((order) => !["served", "cancelled"].includes(order.status)).slice(0, 4)} role={role} busy={busy} etaValues={etaValues} onEta={(id, value) => setEtaValues((current) => ({ ...current, [id]: value }))} saveEta={saveEta} changeStatus={setOrderStatus} staff={staff} assignWaiter={assignWaiter} canAssignWaiters={role === "owner"} printBill={(order) => setPrintBillOrder(order)} paymentMethod={collectedPaymentMethod} onPaymentMethodChange={setCollectedPaymentMethod} markPaid={markOrderPaid} sendWhatsAppBill={sendWhatsAppBill} sendEmailBill={sendEmailBill} /></section>
             <section className="panel"><div className="panel-heading"><h2>Orders · last 7 days</h2><span className="pill">Latest 200</span></div>{orders.length ? <div style={{ width: "100%", height: 230 }}><ResponsiveContainer><BarChart data={chartData}><CartesianGrid stroke="#f1ddd8" vertical={false} /><XAxis dataKey="label" tick={{ fill: "#755d5c", fontSize: 10 }} /><YAxis allowDecimals={false} tick={{ fill: "#755d5c", fontSize: 10 }} /><Tooltip /><Bar dataKey="orders" fill="#850d32" radius={[6, 6, 0, 0]} /></BarChart></ResponsiveContainer></div> : <div className="empty-state"><h3>No order data yet</h3><p>Orders will appear here when guests place them.</p></div>}</section></div>
         </>}
 
         {(section === "orders" || section === "history") && <>
           <div className="admin-title-row"><div><div className="eyebrow">{section === "history" ? "Completed and cancelled" : "Real time order feed"}</div><h1>{section === "history" ? "Order History" : "Live Orders"}</h1><p>Orders update automatically from Firestore. Customer phone details are restricted to staff.</p></div></div>
           {orderError && <div className="notice error" style={{ marginBottom: 14 }}>{orderError}</div>}
-          <OrderList orders={filteredOrders} role={role} busy={busy} etaValues={etaValues} onEta={(id, value) => setEtaValues((current) => ({ ...current, [id]: value }))} saveEta={saveEta} changeStatus={setOrderStatus} staff={staff} assignWaiter={assignWaiter} canAssignWaiters={role === "owner"} />
+          <OrderList orders={filteredOrders} role={role} busy={busy} etaValues={etaValues} onEta={(id, value) => setEtaValues((current) => ({ ...current, [id]: value }))} saveEta={saveEta} changeStatus={setOrderStatus} staff={staff} assignWaiter={assignWaiter} canAssignWaiters={role === "owner"} printBill={(order) => setPrintBillOrder(order)} paymentMethod={collectedPaymentMethod} onPaymentMethodChange={setCollectedPaymentMethod} markPaid={markOrderPaid} sendWhatsAppBill={sendWhatsAppBill} sendEmailBill={sendEmailBill} />
         </>}
 
         {section === "assigned" && <>
           <div className="admin-title-row"><div><div className="eyebrow">Assigned to your account</div><h1>My Assigned Orders</h1><p>Only orders assigned to you by your restaurant owner or platform support appear here.</p></div><span className="pill">{assignedOrders.filter((order) => !["served", "cancelled"].includes(order.status)).length} open</span></div>
           {assignedOrders.filter((order) => !["served", "cancelled"].includes(order.status)).length === 0 ? <div className="empty-state"><h3>No assigned orders</h3><p>New orders assigned by your restaurant owner or platform support will show here.</p></div> : <div className="order-list">{assignedOrders.filter((order) => !["served", "cancelled"].includes(order.status)).map((order) => <article className="order-card" key={order.id}>
-            <div className="order-card-head"><div><h3>Table {order.tableNumberSnapshot}</h3><div className="order-card-meta"><span>{order.ticketId}</span><span>{order.createdAt?.toDate?.().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) ?? "New order"}</span></div></div><span className="pill">{humanizeStatus(order.status)}{order.estimatedMinutes ? ` · ${order.estimatedMinutes} min` : ""}</span></div>
+            <div className="order-card-head"><div><h3>Table {order.tableNumberSnapshot}</h3><div className="order-card-meta"><span>{order.ticketId}</span><span>{order.createdAt?.toDate?.().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) ?? "New order"}</span></div></div><span className="pill">{humanizeStatus(order.status)}</span><EtaCountdown expectedReadyAtMs={order.expectedReadyAt?.toDate?.().getTime() ?? null} estimatedMinutes={order.estimatedMinutes} status={order.status} /></div>
             <div className="order-food">{order.items.map((item, index) => <div className="order-food-row" key={`${item.name}-${index}`}><span>{item.quantity} × {item.name}{item.selections?.length ? ` · ${item.selections.join(", ")}` : ""}{item.specialInstructions ? ` · ${item.specialInstructions}` : ""}</span></div>)}</div>
             {order.status === "ready" && <button className="btn btn-primary btn-small" disabled={busy} onClick={() => setOrderStatus(order, "served")}>Mark served</button>}
           </article>)}</div>}
@@ -551,7 +810,7 @@ export default function AdminConsole({ shopId: routeShopId }: { shopId?: string 
           <div className="admin-title-row"><div><div className="eyebrow">Live kitchen pass</div><h1>Kitchen Display</h1><p>Open tickets sync with the restaurant order queue and guest tracking.</p></div><span className="pill"><span className="status-dot" /> {filteredOrders.length} open tickets</span></div>
           {orderError && <div className="notice error">{orderError}</div>}
           {filteredOrders.length === 0 ? <div className="empty-state"><h3>Kitchen is clear</h3><p>New guest orders will appear here immediately.</p></div> : <div className="admin-grid kitchen-grid" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(245px,1fr))", alignItems: "start" }}>
-            {(["queued", "accepted", "preparing", "ready"] as OrderStatus[]).map((status) => <section className="panel" key={status}><div className="panel-heading"><h2>{status === "queued" ? "New tickets" : humanizeStatus(status)}</h2><span className="pill">{filteredOrders.filter((order) => order.status === status).length}</span></div><div className="order-list">{filteredOrders.filter((order) => order.status === status).map((order) => <article className="order-card" key={order.id}><div className="order-card-head"><div><h3>Table {order.tableNumberSnapshot}</h3><div className="order-card-meta"><span>{order.ticketId}</span>{order.createdAt && <span>{order.createdAt.toDate().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span>}</div></div><span className="pill">{order.estimatedMinutes ? `${order.estimatedMinutes} min` : "ETA pending"}</span></div><div className="order-food">{order.items.map((item, index) => <div className="order-food-row" key={`${item.name}-${index}`}><span>{item.quantity} × {item.name}{item.selections?.length ? ` · ${item.selections.join(", ")}` : ""}</span></div>)}</div>{status === "accepted" && <button className="btn btn-primary btn-small" disabled={busy} onClick={() => setOrderStatus(order, "preparing")}>Start preparing</button>}{status === "preparing" && <button className="btn btn-primary btn-small" disabled={busy} onClick={() => setOrderStatus(order, "ready")}>Mark ready</button>}{status === "ready" && isManager && <button className="btn btn-soft btn-small" disabled={busy} onClick={() => setOrderStatus(order, "served")}>Mark served</button>}</article>)}</div></section>)}
+            {(["queued", "accepted", "preparing", "ready"] as OrderStatus[]).map((status) => <section className="panel" key={status}><div className="panel-heading"><h2>{status === "queued" ? "New tickets" : humanizeStatus(status)}</h2><span className="pill">{filteredOrders.filter((order) => order.status === status).length}</span></div><div className="order-list">{filteredOrders.filter((order) => order.status === status).map((order) => <article className="order-card" key={order.id}><div className="order-card-head"><div><h3>Table {order.tableNumberSnapshot}</h3><div className="order-card-meta"><span>{order.ticketId}</span>{order.createdAt && <span>{order.createdAt.toDate().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span>}</div></div><EtaCountdown expectedReadyAtMs={order.expectedReadyAt?.toDate?.().getTime() ?? null} estimatedMinutes={order.estimatedMinutes} status={order.status} /></div><div className="order-food">{order.items.map((item, index) => <div className="order-food-row" key={`${item.name}-${index}`}><span>{item.quantity} × {item.name}{item.selections?.length ? ` · ${item.selections.join(", ")}` : ""}</span></div>)}</div>{status === "accepted" && <button className="btn btn-primary btn-small" disabled={busy} onClick={() => setOrderStatus(order, "preparing")}>Start preparing</button>}{status === "preparing" && <button className="btn btn-primary btn-small" disabled={busy} onClick={() => setOrderStatus(order, "ready")}>Mark ready</button>}{status === "ready" && isManager && <button className="btn btn-soft btn-small" disabled={busy} onClick={() => setOrderStatus(order, "served")}>Mark served</button>}</article>)}</div></section>)}
           </div>}
         </>}
 
@@ -592,7 +851,7 @@ export default function AdminConsole({ shopId: routeShopId }: { shopId?: string 
             </>}
           </section>
           <div className="admin-columns"><section className="panel"><div className="panel-heading"><h2>Menu items</h2><span className="pill">{menuItems.length}</span></div>
-            {menuItems.length === 0 ? <div className="empty-state"><h3>Your menu is empty</h3><p>Add real dishes and categories here. Guest menus update as soon as you save.</p></div> : <div className="menu-admin-list">{menuItems.map((item) => <div className="menu-admin-row" key={item.id}>{item.imageUrl ? <img src={item.imageUrl} alt="" /> : <span className="menu-image-placeholder" />}<span><strong>{item.name}</strong><small>{money(item.pricePaise)} · {categories.find((category) => category.id === item.categoryId)?.name ?? "Uncategorised"} · {item.isAvailable ? "Available" : "Unavailable"}</small></span><span style={{ display: "flex", gap: 5 }}><button className="icon-button" title="Edit dish" onClick={() => showItemEditor(item)}><Pencil size={14} /></button><button className="icon-button" title={item.isAvailable ? "Mark unavailable" : "Mark available"} onClick={() => setMenuAvailability(item)}>{item.isAvailable ? <ToggleRight size={17} /> : <ToggleLeft size={17} />}</button></span></div>)}</div>}
+            {menuItems.length === 0 ? <div className="empty-state"><h3>Your menu is empty</h3><p>Add real dishes and categories here. Guest menus update as soon as you save.</p></div> : <div className="menu-admin-list">{menuItems.map((item) => <div className="menu-admin-row" key={item.id}>{item.imageUrl ? <img src={item.imageUrl} alt="" /> : <span className="menu-image-placeholder" />}<span><strong>{item.name}</strong><small>{money(item.pricePaise)} · {categories.find((category) => category.id === item.categoryId)?.name ?? "Uncategorised"} · {item.isAvailable ? "Available" : "Unavailable"}</small></span><span style={{ display: "flex", gap: 5 }}><button className="icon-button" title={item.imageUrl ? "Change dish photo" : "Add dish photo"} aria-label={item.imageUrl ? `Change ${item.name} photo` : `Add ${item.name} photo`} onClick={() => showItemEditor(item)}><ImagePlus size={15} /></button><button className="icon-button" title="Edit dish" aria-label={`Edit ${item.name}`} onClick={() => showItemEditor(item)}><Pencil size={14} /></button><button className="icon-button" title={item.isAvailable ? "Mark unavailable" : "Mark available"} onClick={() => setMenuAvailability(item)}>{item.isAvailable ? <ToggleRight size={17} /> : <ToggleLeft size={17} />}</button></span></div>)}</div>}
           </section><section className="panel"><div className="panel-heading"><h2>Categories</h2><span className="pill">{categories.length}</span></div><form className="admin-form" onSubmit={createCategory}><label className="field-label">New category<input className="field" value={categoryName} onChange={(event) => setCategoryName(event.target.value)} placeholder="e.g. Biryani & curries" required /></label><button className="btn btn-soft" disabled={busy}><Plus size={14} /> Add category</button></form><div className="activity-list" style={{ marginTop: 17 }}>{categories.map((category) => <div className="activity-row" key={category.id}><strong>{category.name}</strong><span className="muted">{category.isActive ? "Published" : "Hidden"}</span></div>)}</div></section></div>
         </>}
 
@@ -630,11 +889,17 @@ export default function AdminConsole({ shopId: routeShopId }: { shopId?: string 
 
         {section === "settings" && <>
           <div className="admin-title-row"><div><div className="eyebrow">Restaurant profile</div><h1>Settings</h1><p>Customer-visible name, order availability, and server-calculated fees.</p></div></div>
+          <section className="panel whatsapp-share-settings"><div className="panel-heading"><h2><MessageCircle size={18} /> WhatsApp bills</h2><span className="pill">No setup needed</span></div><p className="muted">Make sure WhatsApp Web is signed in in this browser on this PC. Choose <strong>WhatsApp Bill</strong> on a served order; the number entered with that order and bill details will be prefilled. Review the message and press <strong>Send</strong> in WhatsApp Web.</p></section>
           {authError && <div className="notice error" style={{ marginBottom: 13 }}>{authError}</div>}
-          {settings ? <form className="panel admin-form" style={{ maxWidth: 650 }} onSubmit={saveSettings}>
+          {settings ? <form className="panel admin-form" style={{ maxWidth: 700 }} onSubmit={saveSettings}>
             <label className="field-label">Restaurant name<input className="field" required value={settings.name} onChange={(event) => setSettings({ ...settings, name: event.target.value })} /></label>
             <div className="admin-form-row"><label className="field-label">Tax rate (%)<input className="field" type="number" min="0" max="100" step="0.01" value={settings.taxRateBps / 100} onChange={(event) => setSettings({ ...settings, taxRateBps: Math.round(Number(event.target.value) * 100) })} /></label><label className="field-label">Service fee (₹)<input className="field" type="number" min="0" step="0.01" value={settings.serviceFeePaise / 100} onChange={(event) => setSettings({ ...settings, serviceFeePaise: Math.round(Number(event.target.value) * 100) })} /></label></div>
             <label className="choice-row"><span><strong>Accept guest orders</strong><small className="muted" style={{ display: "block", marginTop: 4 }}>Pause ordering without deactivating table QR codes.</small></span><input type="checkbox" checked={settings.isAcceptingOrders} onChange={(event) => setSettings({ ...settings, isAcceptingOrders: event.target.checked })} /></label>
+            <section className="restaurant-payment-settings"><div><div className="eyebrow">Payment configuration</div><h2>Choose what guests can pay with</h2><p className="muted">At least one method must stay enabled. UPI QR payments go directly to your UPI account; staff confirms receipt manually.</p></div>
+              <label className="choice-row"><span><strong>Pay at restaurant</strong><small className="muted" style={{ display: "block", marginTop: 4 }}>Guests order now and pay your staff after serving.</small></span><input type="checkbox" checked={settings.payAtRestaurantEnabled} onChange={(event) => setSettings({ ...settings, payAtRestaurantEnabled: event.target.checked })} /></label>
+              <label className="choice-row"><span><strong>Direct UPI payment</strong><small className="muted" style={{ display: "block", marginTop: 4 }}>Show guests a QR and UPI-app link for your VPA. No payment gateway fee.</small></span><input type="checkbox" checked={settings.upiEnabled} onChange={(event) => setSettings({ ...settings, upiEnabled: event.target.checked })} /></label>
+              {settings.upiEnabled && <div className="admin-form-row"><label className="field-label">Restaurant UPI ID / VPA<input className="field" required value={settings.upiId} onChange={(event) => setSettings({ ...settings, upiId: event.target.value.trim() })} placeholder="restaurant@upi" /></label><label className="field-label">Payee name<input className="field" required maxLength={80} value={settings.upiPayeeName} onChange={(event) => setSettings({ ...settings, upiPayeeName: event.target.value })} placeholder={settings.name || "Restaurant name"} /></label></div>}
+            </section>
             <button className="btn btn-primary" disabled={busy}><Save size={15} /> Save settings</button>
           </form> : <div className="loading">Loading restaurant settings…</div>}
         </>}
@@ -645,22 +910,43 @@ export default function AdminConsole({ shopId: routeShopId }: { shopId?: string 
         </>}
 
         {section === "notifications" && <>
-          <div className="admin-title-row"><div><div className="eyebrow">Live operational notices</div><h1>Notifications</h1><p>Order notices come from the live Firestore queue. Restaurant settings are stored in Firebase.</p></div><span className="pill">{needsAttention.length + Number(subscriptionNeedsAttention)} need attention</span></div>
+          <div className="admin-title-row"><div><div className="eyebrow">Live operational notices</div><h1>Notifications</h1><p>Order notices come from the live Firestore queue. Restaurant settings are stored in Firebase.</p></div><span className="pill">{needsAttention.length + servedIssues.length + Number(subscriptionNeedsAttention)} need attention</span></div>
+          {orderError && <div className="notice error" style={{ marginBottom: 13 }}>{orderError}</div>}
           {role === "owner" && subscriptionNeedsAttention && subscriptionNoticeData && <article className="order-card"><div className="order-card-head"><div><h3>Workspace plan needs attention</h3><div className="order-card-meta"><span>{subscriptionNoticeData.status.replaceAll("_", " ")}</span>{subscriptionNoticeData.orderLimit !== null && <span>{subscriptionNoticeData.currentUsage.toLocaleString("en-IN")} / {subscriptionNoticeData.orderLimit.toLocaleString("en-IN")} accepted orders ({quotaPercent}%)</span>}{subscriptionNoticeData.currentPeriodEndMs !== null && <span>Cycle end {new Date(subscriptionNoticeData.currentPeriodEndMs).toLocaleDateString("en-IN")}</span>}</div><p className="muted">Workspace access is stored in Firestore. There is no payment provider in this setup.</p></div><Link className="btn btn-soft btn-small" to={`/app/${restaurantId}/subscription`}>Open workspace plan <ArrowRight size={13} /></Link></div></article>}
-          {needsAttention.length ? <div className="order-list">{needsAttention.map((order) => <article className="order-card" key={order.id}><div className="order-card-head"><div><h3>{order.status === "queued" ? "New order waiting" : "Preparation estimate needed"}</h3><div className="order-card-meta"><span>{order.ticketId}</span><span>Table {order.tableNumberSnapshot}</span><span>{order.createdAt?.toDate?.().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span></div></div><button className="btn btn-soft btn-small" onClick={() => setSection("orders")}>Open order queue <ArrowRight size={13} /></button></div></article>)}</div> : !subscriptionNeedsAttention && !(role === "owner" && !subscriptionNoticeData) ? <div className="empty-state"><h3>You’re all caught up</h3><p>New orders and missing manager estimates will appear here.</p></div> : null}
+          {servedIssues.length > 0 && <section style={{ marginBottom: 16 }}><div className="eyebrow" style={{ marginBottom: 9 }}>Guest reports · quick resolution</div><div className="order-list">{servedIssues.map((order) => <article className="order-card served-issue-card" key={order.id}><div className="order-card-head"><div><h3>Guest says this order was not served</h3><div className="order-card-meta"><span>{order.ticketId}</span><span>Table {order.tableNumberSnapshot}</span>{order.customerName && <span>{order.customerName}</span>}{order.customerPhone && <a href={`tel:${order.customerPhone}`}>{order.customerPhone}</a>}{order.customerServedResponse?.createdAt?.toDate?.() && <span>Reported {order.customerServedResponse.createdAt.toDate().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span>}</div></div><span className="pill">Needs follow-up</span></div><div className="order-food">{order.items.map((item, index) => <div className="order-food-row" key={`${item.name}-${index}`}><span>{item.quantity} × {item.name}{item.selections?.length ? ` · ${item.selections.join(", ")}` : ""}</span></div>)}</div>{order.customerServedResponse?.details && <p className="served-issue-details"><strong>Guest note:</strong> {order.customerServedResponse.details}</p>}<div className="order-actions"><p className="muted" style={{ margin: 0 }}>Please check with the guest and resolve the missing order or delivery.</p><button className="btn btn-primary btn-small" disabled={busy} onClick={() => void resolveServedIssue(order)}>Mark resolved</button></div></article>)}</div></section>}
+          {needsAttention.length ? <div className="order-list">{needsAttention.map((order) => <article className="order-card" key={order.id}><div className="order-card-head"><div><h3>{order.status === "queued" ? "New order waiting" : "Preparation estimate needed"}</h3><div className="order-card-meta"><span>{order.ticketId}</span><span>Table {order.tableNumberSnapshot}</span><span>{order.createdAt?.toDate?.().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span></div></div><button className="btn btn-soft btn-small" onClick={() => setSection("orders")}>Open order queue <ArrowRight size={13} /></button></div></article>)}</div> : !servedIssues.length && !subscriptionNeedsAttention && !(role === "owner" && !subscriptionNoticeData) ? <div className="empty-state"><h3>You’re all caught up</h3><p>New orders, missing estimates, and guest service reports will appear here.</p></div> : null}
         </>}
       </div>
     </main>
 
-    {itemEditorOpen && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setItemEditorOpen(false); }}><section className="modal-sheet" role="dialog" aria-modal="true" aria-label="Menu item editor"><div className="panel-heading"><div><div className="eyebrow">Guest menu</div><h2>{editingItem ? "Edit dish" : "Create a dish"}</h2></div><button className="icon-button" onClick={() => setItemEditorOpen(false)}><X size={16} /></button></div>
+    {printBillOrder && <div className="print-only print-only-bill"><article className="bill-print-card">
+      <header className="bill-print-header">
+        <div className="bill-print-hero">
+          <span className="bill-print-orb bill-print-orb-one" aria-hidden="true" /><span className="bill-print-orb bill-print-orb-two" aria-hidden="true" />
+          <div className="bill-print-brandline"><span className="bill-print-mark"><ChefHat size={19} strokeWidth={1.8} /></span><span className="bill-print-kicker">MADE WITH LOVE · SERVED FRESH</span></div>
+          <h1>{restaurantName || "Restaurant"}</h1><p className="bill-print-hero-caption">A little something delicious</p>
+          <div className="bill-print-invoice-tag"><span>DINING INVOICE</span><strong>{printBillOrder.ticketId}</strong></div>
+        </div>
+        <p className="bill-print-thanks">We’re glad you’re here. Enjoy every bite!</p>
+      </header>
+      <div className="bill-print-meta"><div className="bill-print-meta-card"><span>TABLE</span><strong>{printBillOrder.tableNumberSnapshot}</strong></div><div className="bill-print-meta-card"><span>GUEST</span><strong>{printBillOrder.customerName || "Guest"}</strong></div><div className="bill-print-meta-card bill-print-meta-time"><span>ORDERED AT</span><strong>{printBillOrder.createdAt?.toDate?.().toLocaleString() ?? new Date().toLocaleString()}</strong></div></div>
+      <section className="bill-print-items"><div className="bill-print-items-heading"><strong>YOUR ORDER</strong><span>{printBillOrder.items.reduce((sum, item) => sum + item.quantity, 0)} ITEMS</span></div>{printBillOrder.items.map((item, index) => <div className="bill-print-item" key={`${item.name}-${index}`}><span className="bill-print-quantity">{item.quantity}×</span><div className="bill-print-item-name"><strong>{item.name}</strong>{item.selections?.length ? <small>{item.selections.join(", ")}</small> : null}</div><strong className="bill-print-item-price">{money(item.lineTotalPaise)}</strong></div>)}</section>
+      <div className="bill-print-totals"><div><span>Subtotal</span><strong>{money(printBillOrder.subtotalPaise)}</strong></div><div><span>Tax</span><strong>{money(printBillOrder.taxPaise)}</strong></div>{printBillOrder.serviceFeePaise > 0 && <div><span>Service fee</span><strong>{money(printBillOrder.serviceFeePaise)}</strong></div>}<div className="grand"><div><small>GRAND TOTAL</small><span>{printBillOrder.paymentStatus === "pending" ? printBillOrder.paymentMethod === "upi" ? "UPI awaiting confirmation" : "Pay at restaurant" : "Thank you!"}</span></div><strong>{money(printBillOrder.totalAmountPaise)}</strong></div></div>
+      <p className={`bill-print-payment ${printBillOrder.paymentStatus === "pending" ? "due" : "paid"}`}>{printBillOrder.paymentStatus === "pending" ? printBillOrder.paymentMethod === "upi" ? "UPI RECEIVED · AWAITING VERIFICATION" : "PAYMENT DUE · Pay at restaurant" : printBillOrder.paymentStatus === "mock_paid" ? "PREPAID DEMO · No real payment collected" : `PAID · ${printBillOrder.paymentMethod ?? "Recorded"}`}</p>
+      <div className="bill-print-qr"><div className="bill-print-qr-copy"><span className="bill-print-qr-kicker">YOUR ORDER, LIVE</span><strong>Stay in the loop</strong><span>Scan to see your order, follow its progress and confirm service.</span></div><QRCodeCanvas value={`${CUSTOMER_APP_ORIGIN}/track/${encodeURIComponent(printBillOrder.ticketId)}`} size={132} level="M" includeMargin /></div>
+      <footer className="bill-print-footer"><span className="bill-print-footer-flourish">✳</span><strong>Thank you for dining with us</strong><small>Good food tastes even better together.</small></footer>
+    </article></div>}
+
+    {itemEditorOpen && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) closeItemEditor(); }}><section className="modal-sheet" role="dialog" aria-modal="true" aria-label="Menu item editor"><div className="panel-heading"><div><div className="eyebrow">Guest menu</div><h2>{editingItem ? "Edit dish" : "Create a dish"}</h2></div><button className="icon-button" onClick={closeItemEditor}><X size={16} /></button></div>
       <form className="admin-form" onSubmit={saveMenuItem}><label className="field-label">Dish name<input className="field" required value={itemName} onChange={(event) => setItemName(event.target.value)} /></label><label className="field-label">Description<textarea className="field" rows={2} value={itemDescription} onChange={(event) => setItemDescription(event.target.value)} /></label>
         <div className="admin-form-row"><label className="field-label">Category<select className="field" required value={itemCategory} onChange={(event) => setItemCategory(event.target.value)}><option value="">Choose a category</option>{categories.filter((category) => category.isActive).map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label><label className="field-label">Price (₹)<input className="field" type="number" min="0" step="0.01" required value={itemPrice} onChange={(event) => setItemPrice(event.target.value)} /></label></div>
-        <div className="admin-form-row"><label className="field-label">Dietary type<select className="field" value={itemDiet} onChange={(event) => setItemDiet(event.target.value as "veg" | "non-veg")}><option value="veg">Vegetarian</option><option value="non-veg">Non-vegetarian</option></select></label><label className="field-label">Dish photograph<input className="field" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => setItemImage(event.target.files?.[0] ?? null)} /></label></div>
+        <div className="admin-form-row"><label className="field-label">Dietary type<select className="field" value={itemDiet} onChange={(event) => setItemDiet(event.target.value as "veg" | "non-veg")}><option value="veg">Vegetarian</option><option value="non-veg">Non-vegetarian</option></select></label><div className="field-label">Dish photograph<small className="muted">Choose a source, then crop before saving.</small><div className="dish-image-source-tabs" role="tablist" aria-label="Photo source"><button type="button" role="tab" aria-selected={imageSourceMode === "local"} className={imageSourceMode === "local" ? "active" : ""} onClick={() => setImageSourceMode("local")}>From device</button><button type="button" role="tab" aria-selected={imageSourceMode === "link"} className={imageSourceMode === "link" ? "active" : ""} onClick={() => setImageSourceMode("link")}>From link</button></div><div className="dish-image-field">{currentDishImage ? <img className="dish-image-preview" src={currentDishImage} alt={`${itemName || "Dish"} preview`} /> : <span className="dish-image-empty"><ImagePlus size={20} /></span>}{imageSourceMode === "local" ? <div className="dish-image-actions"><label className="btn btn-soft btn-small dish-image-upload"><ImagePlus size={14} />{currentDishImage ? "Choose another" : "Upload photo"}<input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => { selectItemImage(event.target.files?.[0]); event.currentTarget.value = ""; }} /></label>{currentDishImage && <button className="btn btn-quiet btn-small" type="button" onClick={() => { setItemImage(null); setItemImageCloudinaryUrl(""); setRemoveItemImage(true); }}>Remove</button>}</div> : <div className="dish-image-link-controls"><input className="field" type="url" inputMode="url" value={imageUrlInput} onChange={(event) => setImageUrlInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void loadImageFromUrl(); } }} placeholder="https://site.com/dish.jpg" aria-label="Direct image URL" /><button className="btn btn-soft btn-small" type="button" disabled={loadingRemoteImage || !imageUrlInput.trim()} onClick={() => void loadImageFromUrl()}>{loadingRemoteImage ? "Loading…" : "Load & crop"}</button>{currentDishImage && <button className="btn btn-quiet btn-small" type="button" onClick={() => { setItemImage(null); setItemImageCloudinaryUrl(""); setRemoveItemImage(true); }}>Remove</button>}</div>}</div><small className="muted">JPG, PNG or WebP · under 5 MB · square crop</small>{imageSourceMode === "link" && <small className="muted">Cloudinary fetches the public image link; you can crop it after it loads.</small>}</div></div>
         <label className="field-label">Variants <small className="muted">Comma separated Name:₹delta · e.g. Family:350</small><input className="field" value={itemVariants} onChange={(event) => setItemVariants(event.target.value)} placeholder="Regular:0, Family:350" /></label>
         <label className="field-label">Add-ons <small className="muted">Comma separated Name:₹price · e.g. Raita:60</small><input className="field" value={itemAddOns} onChange={(event) => setItemAddOns(event.target.value)} placeholder="Garlic raita:60, Shahi gravy:90" /></label>
-        {menuError && <div className="notice error">{menuError}</div>}<button className="btn btn-primary" disabled={busy}><Save size={15} /> {busy ? "Saving…" : "Save to live menu"}</button>
+        {menuError && <div className="notice error">{menuError}</div>}<button className="btn btn-primary" disabled={busy || loadingRemoteImage || cropOpen}><Save size={15} /> {busy ? "Saving…" : "Save to live menu"}</button>
       </form>
     </section></div>}
+    {cropOpen && cropSource && <DishImageCropper source={cropSource} onApply={applyCroppedImage} onCancel={() => { setCropOpen(false); setCropSource(null); }} />}
   </div>;
 }
 
@@ -668,15 +954,105 @@ function Metric({ label, value, detail }: { label: string; value: string | numbe
   return <article className="metric-card"><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>;
 }
 
-function OrderList({ orders, role, busy, etaValues, onEta, saveEta, changeStatus, staff, assignWaiter, canAssignWaiters }: {
+type CropDimensions = { width: number; height: number };
+type CropOffset = { x: number; y: number };
+const CROP_VIEWPORT_SIZE = 256;
+
+function cropImageScale(dimensions: CropDimensions, zoom: number) {
+  return Math.max(CROP_VIEWPORT_SIZE / dimensions.width, CROP_VIEWPORT_SIZE / dimensions.height) * zoom;
+}
+
+function clampCropOffset(offset: CropOffset, dimensions: CropDimensions, zoom: number): CropOffset {
+  const scale = cropImageScale(dimensions, zoom);
+  const maxX = Math.max(0, (dimensions.width * scale - CROP_VIEWPORT_SIZE) / 2);
+  const maxY = Math.max(0, (dimensions.height * scale - CROP_VIEWPORT_SIZE) / 2);
+  return { x: Math.min(maxX, Math.max(-maxX, offset.x)), y: Math.min(maxY, Math.max(-maxY, offset.y)) };
+}
+
+function DishImageCropper({ source, onApply, onCancel }: { source: DishCropSource; onApply: (result: DishCropResult) => void; onCancel: () => void }) {
+  const [imageSrc, setImageSrc] = useState("");
+  const [dimensions, setDimensions] = useState<CropDimensions | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [offset, setOffset] = useState<CropOffset>({ x: 0, y: 0 });
+  const [error, setError] = useState("");
+  const [exporting, setExporting] = useState(false);
+  const dragStart = useRef<{ x: number; y: number; offset: CropOffset } | null>(null);
+  const imageRef = useRef<HTMLImageElement | null>(null);
+
+  useEffect(() => {
+    setDimensions(null);
+    setZoom(1);
+    setOffset({ x: 0, y: 0 });
+    setError("");
+    if (source.kind === "cloudinary") {
+      setImageSrc(source.imageUrl);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(source.file);
+    setImageSrc(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [source]);
+
+  function applyCrop() {
+    const image = imageRef.current;
+    if (!image || !dimensions) return;
+    const scale = cropImageScale(dimensions, zoom);
+    const sourceLength = CROP_VIEWPORT_SIZE / scale;
+    const sourceCenterX = (CROP_VIEWPORT_SIZE / 2 - offset.x) / scale;
+    const sourceCenterY = (CROP_VIEWPORT_SIZE / 2 - offset.y) / scale;
+    const sourceX = Math.min(dimensions.width - sourceLength, Math.max(0, sourceCenterX - sourceLength / 2));
+    const sourceY = Math.min(dimensions.height - sourceLength, Math.max(0, sourceCenterY - sourceLength / 2));
+    if (source.kind === "cloudinary") {
+      const cropWidth = Math.max(1, Math.min(dimensions.width, Math.round(sourceLength)));
+      const cropHeight = Math.max(1, Math.min(dimensions.height, Math.round(sourceLength)));
+      const cropX = Math.min(dimensions.width - cropWidth, Math.max(0, Math.round(sourceX)));
+      const cropY = Math.min(dimensions.height - cropHeight, Math.max(0, Math.round(sourceY)));
+      onApply({ kind: "cloudinary", imageUrl: cloudinaryCropUrl(source.imageUrl, { x: cropX, y: cropY, width: cropWidth, height: cropHeight }) });
+      return;
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 512;
+    const context = canvas.getContext("2d");
+    if (!context) { setError("Your browser could not crop this image. Try another browser or image."); return; }
+    context.drawImage(image, sourceX, sourceY, sourceLength, sourceLength, 0, 0, canvas.width, canvas.height);
+    setExporting(true);
+    canvas.toBlob((blob) => {
+      if (!blob) { setError("Could not create the cropped image. Please try again."); setExporting(false); return; }
+      onApply({ kind: "file", file: new File([blob], "Image.jpg", { type: "image/jpeg", lastModified: Date.now() }) });
+      setExporting(false);
+    }, "image/jpeg", 0.9);
+  }
+
+  const scale = dimensions ? cropImageScale(dimensions, zoom) : 0;
+  return createPortal(<div className="cropper-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onCancel(); }}>
+    <section className="cropper-sheet" role="dialog" aria-modal="true" aria-label="Crop dish image">
+      <div className="panel-heading"><div><div className="eyebrow">Dish photo</div><h2>Crop image</h2></div><button className="icon-button" type="button" onClick={onCancel} aria-label="Cancel crop"><X size={16} /></button></div>
+      <p className="cropper-help">Drag to position the dish, then adjust the zoom.</p>
+      <div className="cropper-viewport" onPointerDown={(event) => { if (!dimensions) return; event.currentTarget.setPointerCapture(event.pointerId); dragStart.current = { x: event.clientX, y: event.clientY, offset }; }} onPointerMove={(event) => { if (!dragStart.current || !dimensions) return; setOffset(clampCropOffset({ x: dragStart.current.offset.x + event.clientX - dragStart.current.x, y: dragStart.current.offset.y + event.clientY - dragStart.current.y }, dimensions, zoom)); }} onPointerUp={(event) => { dragStart.current = null; if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); }} onPointerCancel={() => { dragStart.current = null; }}>
+        {imageSrc && <img ref={imageRef} src={imageSrc} alt="Dish crop preview" draggable={false} onLoad={(event) => setDimensions({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight })} onError={() => setError("This image could not be opened. Choose another JPG, PNG, or WebP image.")} style={dimensions ? { width: dimensions.width * scale, height: dimensions.height * scale, left: `calc(50% + ${offset.x}px)`, top: `calc(50% + ${offset.y}px)` } : undefined} />}
+        <span className="cropper-frame" aria-hidden="true" />
+      </div>
+      <label className="cropper-zoom">Zoom <input type="range" min="1" max="3" step="0.01" value={zoom} disabled={!dimensions} onChange={(event) => { const nextZoom = Number(event.target.value); setZoom(nextZoom); if (dimensions) setOffset((current) => clampCropOffset(current, dimensions, nextZoom)); }} /><span>{zoom.toFixed(1)}×</span></label>
+      {error && <div className="notice error">{error}</div>}
+      <div className="cropper-actions"><button className="btn btn-quiet" type="button" onClick={onCancel}>Cancel</button><button className="btn btn-primary" type="button" disabled={!dimensions || exporting || Boolean(error)} onClick={applyCrop}><ImagePlus size={15} />{exporting ? "Cropping…" : "Use cropped image"}</button></div>
+    </section>
+  </div>, document.body);
+}
+
+function OrderList({ orders, role, busy, etaValues, onEta, saveEta, changeStatus, staff, assignWaiter, canAssignWaiters, printBill, paymentMethod, onPaymentMethodChange, markPaid, sendWhatsAppBill, sendEmailBill }: {
   orders: AdminOrder[]; role: StaffRole; busy: boolean; etaValues: Record<string, string>;
   onEta: (id: string, value: string) => void; saveEta: (order: AdminOrder) => void;
   changeStatus: (order: AdminOrder, status: OrderStatus) => void;
   staff: StaffRecord[]; assignWaiter: (order: AdminOrder, staffUid: string) => void; canAssignWaiters: boolean;
+  printBill: (order: AdminOrder) => void; paymentMethod: "cash" | "upi" | "card";
+  onPaymentMethodChange: (method: "cash" | "upi" | "card") => void;
+  markPaid: (order: Pick<AdminOrder, "id">, method: "cash" | "upi" | "card") => void;
+  sendWhatsAppBill: (order: AdminOrder) => void; sendEmailBill: (order: AdminOrder) => void;
 }) {
   if (!orders.length) return <div className="empty-state"><h3>No orders in this view</h3><p>New orders appear automatically as guests place them.</p></div>;
   return <div className="order-list">{orders.map((order) => <article className="order-card" key={order.id}>
-    <div className="order-card-head"><div><h3>Table {order.tableNumberSnapshot} <span className="muted" style={{ font: "600 13px 'Plus Jakarta Sans'" }}>· {order.ticketId}</span></h3><div className="order-card-meta"><span>{order.customerName}</span>{role !== "kitchen" && order.customerPhone && <a href={`tel:${order.customerPhone}`}>{order.customerPhone}</a>}{order.paymentProvider === "mock" && <span className="pill">Demo payment · not charged</span>}<span>{order.createdAt?.toDate?.().toLocaleString() ?? "New order"}</span>{order.assignedStaffUid && <span>Assigned to {staff.find((person) => person.uid === order.assignedStaffUid)?.displayName || staff.find((person) => person.uid === order.assignedStaffUid)?.email || "service staff"}</span>}</div></div><span className="pill"><span className={`status-dot ${order.status === "cancelled" ? "off" : ""}`} />{humanizeStatus(order.status)}</span></div>
+    <div className="order-card-head"><div><h3>Table {order.tableNumberSnapshot} <span className="muted" style={{ font: "600 13px 'Plus Jakarta Sans'" }}>· {order.ticketId}</span></h3><div className="order-card-meta"><span>{order.customerName}</span>{role !== "kitchen" && order.customerPhone && <a href={`tel:${order.customerPhone}`}>{order.customerPhone}</a>}{role !== "kitchen" && order.customerEmail && <a href={`mailto:${order.customerEmail}`}>{order.customerEmail}</a>}{order.paymentMethod === "upi" && <span className="pill">{order.paymentStatus === "paid" ? "UPI paid" : "UPI · verify payment"}</span>}{order.paymentTiming === "pay_after_serve" && <span className="pill">{order.paymentStatus === "pending" ? "Payment due" : `Paid · ${order.paymentMethod ?? "recorded"}`}</span>}{order.paymentProvider === "mock" && <span className="pill">Demo payment · not charged</span>}<span>{order.createdAt?.toDate?.().toLocaleString() ?? "New order"}</span>{order.assignedStaffUid && <span>Assigned to {staff.find((person) => person.uid === order.assignedStaffUid)?.displayName || staff.find((person) => person.uid === order.assignedStaffUid)?.email || "service staff"}</span>}</div></div><span className="pill"><span className={`status-dot ${order.status === "cancelled" ? "off" : ""}`} />{humanizeStatus(order.status)}</span><EtaCountdown expectedReadyAtMs={order.expectedReadyAt?.toDate?.().getTime() ?? null} estimatedMinutes={order.estimatedMinutes} status={order.status} /></div>
     <div className="order-food">{order.items.map((item, index) => <div className="order-food-row" key={`${item.name}-${index}`}><span>{item.quantity} × {item.name}{item.selections?.length ? ` · ${item.selections.join(", ")}` : ""}{item.specialInstructions ? ` · “${item.specialInstructions}”` : ""}</span><strong>{money(item.lineTotalPaise)}</strong></div>)}<div className="order-food-row" style={{ borderTop: "1px solid #ecd9d5", marginTop: 5, paddingTop: 8 }}><strong>Total</strong><strong>{money(order.totalAmountPaise)}</strong></div></div>
     {role !== "kitchen" && !["served", "cancelled"].includes(order.status) && <div className="order-actions"><label className="field-label" style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 6 }}>ETA <input className="field" type="number" min="1" max="240" placeholder="min" value={etaValues[order.id] ?? String(order.estimatedMinutes ?? "")} onChange={(event) => onEta(order.id, event.target.value)} /></label><button className="btn btn-soft btn-small" disabled={busy || !Number(etaValues[order.id] ?? order.estimatedMinutes)} onClick={() => saveEta(order)}><Save size={13} /> Save & notify</button>
       {canAssignWaiters && <label className="field-label">Service staff<select className="field" value={order.assignedStaffUid ?? ""} disabled={busy} onChange={(event) => assignWaiter(order, event.target.value)}><option value="">Unassigned</option>{staff.filter((person) => person.role === "waiter" && (person.isActive || person.uid === order.assignedStaffUid)).map((person) => <option key={person.uid} value={person.uid}>{person.displayName || person.email || person.uid}{person.isActive ? "" : " (disabled)"}</option>)}</select></label>}
@@ -686,5 +1062,7 @@ function OrderList({ orders, role, busy, etaValues, onEta, saveEta, changeStatus
       {order.status === "ready" && <button className="btn btn-primary btn-small" disabled={busy} onClick={() => changeStatus(order, "served")}>Mark served</button>}
       {role === "owner" && ["queued", "accepted"].includes(order.status) && <button className="btn btn-danger btn-small" disabled={busy} onClick={() => changeStatus(order, "cancelled")}>Cancel</button>}
     </div>}
+    {(role === "owner" || role === "manager") && order.paymentTiming === "prepaid" && order.paymentMethod === "upi" && order.paymentStatus === "pending" && order.status !== "cancelled" && <div className="order-actions"><span className="pill">Guest reports UPI paid · verify in restaurant account</span><button className="btn btn-soft btn-small" disabled={busy} onClick={() => markPaid(order, "upi")}>Confirm UPI received</button></div>}
+    {order.status === "served" && <div className="order-actions"><button className="btn btn-primary btn-small" onClick={() => printBill(order)}><Printer size={14} /> Print Bill</button><button className="btn btn-soft btn-small" onClick={() => sendEmailBill(order)}><Mail size={14} />{order.customerEmail ? "Email Bill" : "Enter email"}</button><button className="btn btn-soft btn-small" onClick={() => sendWhatsAppBill(order)}><MessageCircle size={14} />WhatsApp Bill</button>{order.paymentTiming === "pay_after_serve" && order.paymentStatus === "pending" && <><label className="field-label">Payment received by<select className="field" value={paymentMethod} onChange={(event) => onPaymentMethodChange(event.target.value as "cash" | "upi" | "card")}><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option></select></label><button className="btn btn-soft btn-small" disabled={busy} onClick={() => markPaid(order, paymentMethod)}>Mark paid</button></>}</div>}
   </article>)}</div>;
 }

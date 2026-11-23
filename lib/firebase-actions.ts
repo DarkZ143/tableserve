@@ -109,6 +109,74 @@ export async function runFirebaseAction<TInput extends object, TOutput>(name: st
     case "listPlans": {
       return { plans: [freePlan] } as TOutput;
     }
+    case "submitServedFeedback": {
+      const ticketId = String(args.ticketId ?? "").trim().toUpperCase();
+      const restaurantId = String(args.restaurantId ?? "").trim();
+      const response = String(args.response ?? "");
+      const details = String(args.details ?? "").trim();
+      if (!/^TS-[A-F0-9]{40}$/.test(ticketId) || !restaurantId || !["yes", "no"].includes(response) || details.length > 500 || (response === "yes" && details)) {
+        throw new Error("We could not verify this ticket. Please reload the tracking page and try again.");
+      }
+      const trackingId = await sha256(ticketId);
+      const trackingRef = doc(db, "restaurants", restaurantId, "publicTracking", trackingId);
+      const tracking = await getDoc(trackingRef);
+      if (!tracking.exists() || tracking.data().ticketId !== ticketId || tracking.data().status !== "served") {
+        throw new Error("This ticket is not marked served yet. Please wait for the restaurant update.");
+      }
+      const existing = tracking.data().customerServedResponse;
+      if (existing && ["yes", "no"].includes(String(existing.response))) {
+        return { response: existing.response } as TOutput;
+      }
+      const orderId = String(tracking.data().orderId ?? "");
+      if (!orderId) throw new Error("We could not find this order. Please contact the restaurant team.");
+      const feedback = { response, ...(response === "no" && details ? { details } : {}), createdAt: serverTimestamp() };
+      const batch = writeBatch(db);
+      batch.update(doc(db, "restaurants", restaurantId, "orders", orderId), { customerServedResponse: feedback });
+      batch.update(trackingRef, { customerServedResponse: feedback });
+      await batch.commit();
+      return { response } as TOutput;
+    }
+    case "resolveServedIssue": {
+      const access = await actor(shopId);
+      const orderId = String(args.orderId ?? "").trim();
+      if (!orderId) throw new Error("Order not found.");
+      const orderRef = doc(db, "restaurants", shopId, "orders", orderId);
+      const order = await getDoc(orderRef);
+      if (!order.exists() || order.data().status !== "served" || order.data().customerServedResponse?.response !== "no") {
+        throw new Error("This guest report is no longer open.");
+      }
+      if (order.data().serviceIssueResolvedAt) throw new Error("This guest report has already been resolved.");
+      await updateDoc(orderRef, {
+        serviceIssueResolvedAt: serverTimestamp(),
+        serviceIssueResolvedBy: access.user.uid,
+        updatedAt: serverTimestamp(),
+      });
+      await audit(shopId, "order.served_issue_resolved", "order", orderId, { ticketId: order.data().ticketId });
+      return { ok: true } as TOutput;
+    }
+    case "markOrderPaid": {
+      const access = await actor(shopId);
+      const orderId = String(args.orderId ?? "").trim();
+      const method = String(args.method ?? "");
+      if (!orderId || !["cash", "upi", "card"].includes(method)) throw new Error("Choose a valid payment method.");
+      const orderRef = doc(db, "restaurants", shopId, "orders", orderId);
+      const order = await getDoc(orderRef);
+      if (!order.exists() || order.data().paymentStatus !== "pending") throw new Error("This order is not awaiting payment confirmation.");
+      const orderData = order.data();
+      const payAtRestaurant = orderData.paymentTiming === "pay_after_serve" && orderData.status === "served";
+      const directUpi = orderData.paymentTiming === "prepaid" && orderData.paymentProvider === "manual" && orderData.paymentMethod === "upi" && method === "upi" && orderData.status !== "cancelled";
+      if (!payAtRestaurant && !directUpi) throw new Error("Confirm the payment only after checking the restaurant's payment record.");
+      const trackingId = await sha256(String(order.data().ticketId));
+      const trackingRef = doc(db, "restaurants", shopId, "publicTracking", trackingId);
+      const now = serverTimestamp();
+      const patch = { paymentStatus: "paid", paymentProvider: "manual", paymentMethod: method, paymentPaidAt: now, updatedAt: now };
+      const batch = writeBatch(db);
+      batch.update(orderRef, patch);
+      batch.update(trackingRef, patch);
+      await batch.commit();
+      await audit(shopId, "order.payment_collected", "order", orderId, { ticketId: orderData.ticketId, method, source: directUpi ? "direct_upi" : "pay_at_restaurant" });
+      return { ok: true } as TOutput;
+    }
     case "createRestaurant": {
       const user = auth.currentUser;
       if (!user) throw new Error("Sign in with your owner account first.");
@@ -132,9 +200,10 @@ export async function runFirebaseAction<TInput extends object, TOutput>(name: st
           ownerUid: user.uid, ownerEmail, ownerName: String(inputData.ownerName).trim(), phone: String(inputData.phone).trim(),
           address: String(inputData.address).trim(), city: String(inputData.city).trim(), state: String(inputData.state).trim(), postalCode: String(inputData.postalCode).trim(),
           cuisine: String(inputData.cuisine ?? "").trim(), timezone: String(inputData.timezone ?? "Asia/Kolkata"), currency: "INR", taxRateBps: 0, serviceFeePaise: 0,
+          payAtRestaurantEnabled: true, upiEnabled: false, upiId: "", upiPayeeName: String(inputData.name).trim(),
           isAcceptingOrders: true, platformStatus: "active", subscriptionStatus: "active", planId: "free", lifetimeAcceptedOrders: 0, createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
         });
-        tx.set(doc(db, "publicRestaurants", restaurantRef.id), { restaurantId: restaurantRef.id, name: String(inputData.name).trim(), taxRateBps: 0, serviceFeePaise: 0, isAcceptingOrders: true, platformStatus: "active", subscriptionStatus: "active", currentUsage: 0, orderLimit: null, currentPeriodEnd: periodEnd, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+        tx.set(doc(db, "publicRestaurants", restaurantRef.id), { restaurantId: restaurantRef.id, name: String(inputData.name).trim(), taxRateBps: 0, serviceFeePaise: 0, isAcceptingOrders: true, payAtRestaurantEnabled: true, upiEnabled: false, upiId: "", upiPayeeName: String(inputData.name).trim(), platformStatus: "active", subscriptionStatus: "active", currentUsage: 0, orderLimit: null, currentPeriodEnd: periodEnd, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
         tx.set(ownerRef, { uid: user.uid, email: ownerEmail, displayName: user.displayName ?? String(inputData.ownerName).trim(), role: "owner", isActive: true, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
         tx.set(membershipRef, { shopId: restaurantRef.id, shopName: String(inputData.name).trim(), role: "owner", isActive: true, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
         tx.set(subscriptionRef, { shopId: restaurantRef.id, planId: "free", planName: chosenPlan.name, amountPaise: 0, orderLimit: null, status: "active", currency: "INR", provider: "firebase", currentUsage: 0, currentPeriodStart: now, currentPeriodEnd: periodEnd, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
@@ -164,7 +233,7 @@ export async function runFirebaseAction<TInput extends object, TOutput>(name: st
         const now = Timestamp.now();
         const end = needsFirebasePlan ? Timestamp.fromMillis(now.toMillis() + 100 * 365.25 * 24 * 60 * 60 * 1000) : billing.currentPeriodEnd ?? Timestamp.fromMillis(now.toMillis() + 100 * 365.25 * 24 * 60 * 60 * 1000);
         const acceptsGuestOrders = shouldEnableGuestOrders || profile.isAcceptingOrders === true;
-        batch.set(doc(db, "publicRestaurants", shopId), { restaurantId: shopId, name: profile.name ?? "Restaurant", taxRateBps: Number(profile.taxRateBps ?? 0), serviceFeePaise: Number(profile.serviceFeePaise ?? 0), isAcceptingOrders: acceptsGuestOrders, platformStatus: profile.platformStatus ?? "active", subscriptionStatus: "active", currentUsage: Number(billing?.currentUsage ?? 0), orderLimit: null, currentPeriodEnd: end, updatedAt: serverTimestamp() }, { merge: true });
+        batch.set(doc(db, "publicRestaurants", shopId), { restaurantId: shopId, name: profile.name ?? "Restaurant", taxRateBps: Number(profile.taxRateBps ?? 0), serviceFeePaise: Number(profile.serviceFeePaise ?? 0), isAcceptingOrders: acceptsGuestOrders, payAtRestaurantEnabled: profile.payAtRestaurantEnabled !== false, upiEnabled: profile.upiEnabled === true, upiId: String(profile.upiId ?? ""), upiPayeeName: String(profile.upiPayeeName ?? profile.name ?? "Restaurant"), platformStatus: profile.platformStatus ?? "active", subscriptionStatus: "active", currentUsage: Number(billing?.currentUsage ?? 0), orderLimit: null, currentPeriodEnd: end, updatedAt: serverTimestamp() }, { merge: true });
         if (shouldEnableGuestOrders) {
           batch.update(access.restaurant, { isAcceptingOrders: true, updatedAt: serverTimestamp() });
           batch.set(orderingMigrationRef, {
@@ -229,7 +298,7 @@ export async function runFirebaseAction<TInput extends object, TOutput>(name: st
       if (!tableSnapshot.exists() || !restaurantSnapshot.exists() || table?.isActive !== true || table.qrTokenHash !== hash) throw new Error("This table QR is no longer available.");
       const end = toMillis(restaurant?.currentPeriodEnd);
       const allowedToOrder = restaurant?.isAcceptingOrders === true && restaurant?.platformStatus !== "suspended" && restaurant?.subscriptionStatus === "active" && end !== null && end > Date.now() && (restaurant?.orderLimit == null || Number(restaurant.currentUsage ?? 0) < Number(restaurant.orderLimit));
-      return { shopId: rid, restaurantId: rid, restaurantName: String(restaurant?.name ?? "Restaurant"), tableNumber: String(table.tableNumber), taxRateBps: Number(restaurant?.taxRateBps ?? 0), serviceFeePaise: Number(restaurant?.serviceFeePaise ?? 0), isAcceptingOrders: allowedToOrder } as TOutput;
+      return { shopId: rid, restaurantId: rid, restaurantName: String(restaurant?.name ?? "Restaurant"), tableNumber: String(table.tableNumber), taxRateBps: Number(restaurant?.taxRateBps ?? 0), serviceFeePaise: Number(restaurant?.serviceFeePaise ?? 0), payAtRestaurantEnabled: restaurant?.payAtRestaurantEnabled !== false, upiEnabled: restaurant?.upiEnabled === true, upiId: String(restaurant?.upiId ?? ""), upiPayeeName: String(restaurant?.upiPayeeName ?? restaurant?.name ?? "Restaurant"), isAcceptingOrders: allowedToOrder } as TOutput;
     }
     case "listTables": {
       await actor(shopId, ["owner", "manager"]);
@@ -328,12 +397,19 @@ export async function runFirebaseAction<TInput extends object, TOutput>(name: st
     case "placeOrder": {
       const inputData = args as AnyRecord;
       const items = Array.isArray(inputData.items) ? inputData.items as AnyRecord[] : [];
+      const paymentTiming = String(inputData.paymentTiming ?? "");
+      const paymentMethod = String(inputData.paymentMethod ?? "");
+      const whatsappBillOptIn = inputData.whatsappBillOptIn === true;
       if (!items.length || items.length > 50) throw new Error("Add at least one menu item.");
-      if (inputData.mockPaymentConfirmed !== true) throw new Error("Complete the mock payment before placing the order.");
+      if (!["prepaid", "pay_after_serve"].includes(paymentTiming) || !["upi", "pay_after_serve"].includes(paymentMethod) || (paymentTiming === "prepaid") !== (paymentMethod === "upi")) throw new Error("Choose a valid restaurant payment method.");
+      if (typeof inputData.whatsappBillOptIn !== "boolean") throw new Error("Order contact details are incomplete.");
       const customerName = String(inputData.customerName ?? "").trim(); const customerPhone = String(inputData.customerPhone ?? "").trim();
+      const customerEmail = String(inputData.customerEmail ?? "").trim().toLowerCase();
       if (customerName.length < 2 || !/^\+?[0-9()\-\s]{8,20}$/.test(customerPhone)) throw new Error("Enter your name and a valid phone number.");
+      if (customerEmail.length > 254 || (customerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(customerEmail))) throw new Error("Enter a valid email address.");
+      if (paymentMethod === "upi" && inputData.upiPaymentConfirmed !== true) throw new Error("Complete the UPI payment and confirm it before placing your order.");
       const tokenHash = await sha256(String(inputData.qrToken ?? ""));
-      const requestHash = await sha256(JSON.stringify({ tokenHash, customerName, customerPhone, items }));
+      const requestHash = await sha256(JSON.stringify({ tokenHash, customerName, customerPhone, customerEmail, paymentTiming, paymentMethod, whatsappBillOptIn, items }));
       const idempotencyRef = doc(db, "idempotencyLookup", await sha256(String(inputData.idempotencyKey ?? "")));
       const mapRef = doc(db, "qrLookup", tokenHash); const mapSnap = await getDoc(mapRef);
       const map = mapSnap.data();
@@ -359,6 +435,8 @@ export async function runFirebaseAction<TInput extends object, TOutput>(name: st
         if (!restaurant.exists() || !table.exists() || !publicProfile.exists() || !publicTable.exists() || tableData?.isActive !== true || tableData?.qrTokenHash !== tokenHash || publicTableData?.qrTokenHash !== tokenHash) throw new Error("This restaurant table is unavailable.");
         if (publicData?.isAcceptingOrders !== true || publicData?.platformStatus === "suspended" || publicData?.subscriptionStatus !== "active" || end === null || end <= Date.now()) throw new Error("Online ordering is temporarily unavailable; please contact staff.");
         if (publicData?.orderLimit != null && Number(publicData.currentUsage ?? 0) >= Number(publicData.orderLimit)) throw new Error("This restaurant has reached its online order limit. Please contact staff.");
+        if (paymentMethod === "upi" && (publicData?.upiEnabled !== true || !/^[A-Za-z0-9._-]{2,100}@[A-Za-z0-9.-]{2,64}$/.test(String(publicData.upiId ?? "")))) throw new Error("This restaurant's UPI payment is unavailable. Choose pay at restaurant or contact staff.");
+        if (paymentMethod === "pay_after_serve" && publicData?.payAtRestaurantEnabled === false) throw new Error("This restaurant is not accepting pay-at-restaurant orders right now.");
         const byId = new Map(uniqueIds.map((id, index) => [id, menuSnaps[index]]));
         const orderItems = items.map((requested) => {
           const snapshot = byId.get(String(requested.itemId)); const item = snapshot?.data();
@@ -381,10 +459,11 @@ export async function runFirebaseAction<TInput extends object, TOutput>(name: st
         const taxRateBps = Number(profile?.taxRateBps ?? 0); const serviceFeePaise = subtotalPaise > 0 ? Number(profile?.serviceFeePaise ?? 0) : 0;
         const taxPaise = Math.round(subtotalPaise * taxRateBps / 10_000); const totalAmountPaise = subtotalPaise + taxPaise + serviceFeePaise;
         const initialEvent = { status: "queued", at: Timestamp.now() };
-        const orderData = { id: orderRef.id, ticketId, restaurantId: shopId, tableId: tableRef.id, qrTokenHash: tokenHash, tableNumberSnapshot: String(tableData?.tableNumber), customerName, customerPhone, items: orderItems, subtotalPaise, taxPaise, serviceFeePaise, totalAmountPaise, paymentStatus: "mock_paid", paymentProvider: "mock", paymentMethod: "mock", paymentPaidAt: serverTimestamp(), status: "queued", estimatedMinutes: null, expectedReadyAt: null, assignedStaffUid: null, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
+        const paymentStatus = "pending";
+        const orderData = { id: orderRef.id, ticketId, restaurantId: shopId, tableId: tableRef.id, qrTokenHash: tokenHash, tableNumberSnapshot: String(tableData?.tableNumber), customerName, customerPhone, customerEmail, whatsappBillOptIn, items: orderItems, subtotalPaise, taxPaise, serviceFeePaise, totalAmountPaise, paymentTiming, paymentStatus, paymentProvider: "manual", paymentMethod, paymentPaidAt: null, status: "queued", estimatedMinutes: null, expectedReadyAt: null, assignedStaffUid: null, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
         tx.set(orderRef, orderData);
         tx.set(doc(db, "restaurants", shopId, "kitchenOrders", orderRef.id), { ticketId, tableNumberSnapshot: orderData.tableNumberSnapshot, items: orderItems.map((line) => ({ name: line.name, quantity: line.quantity, selections: line.selections, specialInstructions: line.specialInstructions })), status: "queued", estimatedMinutes: null, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-        tx.set(doc(db, "restaurants", shopId, "publicTracking", trackingId), { orderId: orderRef.id, ticketId, tableNumber: orderData.tableNumberSnapshot, status: "queued", estimatedMinutes: null, expectedReadyAt: null, statusEvents: [initialEvent], createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+        tx.set(doc(db, "restaurants", shopId, "publicTracking", trackingId), { orderId: orderRef.id, ticketId, tableNumber: orderData.tableNumberSnapshot, status: "queued", paymentTiming, paymentStatus, paymentMethod, items: orderItems.map((line) => ({ name: line.name, quantity: line.quantity, lineTotalPaise: line.lineTotalPaise, selections: line.selections })), subtotalPaise, taxPaise, serviceFeePaise, totalAmountPaise, paymentPaidAt: orderData.paymentPaidAt, estimatedMinutes: null, expectedReadyAt: null, statusEvents: [initialEvent], createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
         tx.set(doc(db, "ticketLookup", trackingId), { restaurantId: shopId, trackingId, ticketId, createdAt: serverTimestamp() });
         tx.set(idempotencyRef, { requestHash, restaurantId: shopId, orderId: orderRef.id, ticketId, trackingId, createdAt: serverTimestamp() });
       });
@@ -399,7 +478,7 @@ export async function runFirebaseAction<TInput extends object, TOutput>(name: st
       const restaurantId = String(pointer.data().restaurantId); const tracking = await getDoc(doc(db, "restaurants", restaurantId, "publicTracking", trackingId));
       if (!tracking.exists()) throw new Error("Ticket ID not found.");
       const data = tracking.data();
-      return { restaurantId, trackingId, tracking: { ticketId: data.ticketId, tableNumber: data.tableNumber, status: data.status, estimatedMinutes: data.estimatedMinutes ?? null, expectedReadyAtMs: toMillis(data.expectedReadyAt), statusEvents: Array.isArray(data.statusEvents) ? data.statusEvents.map((event: AnyRecord) => ({ status: event.status, atMs: toMillis(event.at) })) : [] } } as TOutput;
+      return { restaurantId, trackingId, tracking: { ticketId: data.ticketId, tableNumber: data.tableNumber, status: data.status, paymentTiming: data.paymentTiming, paymentStatus: data.paymentStatus, paymentMethod: data.paymentMethod, items: Array.isArray(data.items) ? data.items.map((item: AnyRecord) => ({ name: String(item.name ?? "Item"), quantity: Number(item.quantity ?? 0), lineTotalPaise: Number(item.lineTotalPaise ?? 0), selections: Array.isArray(item.selections) ? item.selections.map(String) : [] })) : [], subtotalPaise: typeof data.subtotalPaise === "number" ? data.subtotalPaise : undefined, taxPaise: typeof data.taxPaise === "number" ? data.taxPaise : undefined, serviceFeePaise: typeof data.serviceFeePaise === "number" ? data.serviceFeePaise : undefined, totalAmountPaise: typeof data.totalAmountPaise === "number" ? data.totalAmountPaise : undefined, estimatedMinutes: data.estimatedMinutes ?? null, expectedReadyAtMs: toMillis(data.expectedReadyAt), statusEvents: Array.isArray(data.statusEvents) ? data.statusEvents.map((event: AnyRecord) => ({ status: event.status, atMs: toMillis(event.at) })) : [] } } as TOutput;
     }
     case "setOrderEta":
     case "setOrderStatus": {
@@ -558,13 +637,18 @@ export async function runFirebaseAction<TInput extends object, TOutput>(name: st
     case "getRestaurantSettings": {
       await actor(shopId, roleNames); const snapshot = await getDoc(doc(db, "restaurants", shopId));
       if (!snapshot.exists()) throw new Error("Restaurant profile not found.");
-      const data = snapshot.data(); return { name: data.name ?? "", taxRateBps: Number(data.taxRateBps ?? 0), serviceFeePaise: Number(data.serviceFeePaise ?? 0), isAcceptingOrders: data.isAcceptingOrders === true } as TOutput;
+      const data = snapshot.data(); return { name: data.name ?? "", taxRateBps: Number(data.taxRateBps ?? 0), serviceFeePaise: Number(data.serviceFeePaise ?? 0), isAcceptingOrders: data.isAcceptingOrders === true, payAtRestaurantEnabled: data.payAtRestaurantEnabled !== false, upiEnabled: data.upiEnabled === true, upiId: String(data.upiId ?? ""), upiPayeeName: String(data.upiPayeeName ?? data.name ?? "") } as TOutput;
     }
     case "saveRestaurantSettings": {
       await actor(shopId, ["owner"]); const settings = args as AnyRecord;
       if (String(settings.name ?? "").trim().length < 2 || !Number.isInteger(settings.taxRateBps) || settings.taxRateBps < 0 || settings.taxRateBps > 10_000 || !Number.isInteger(settings.serviceFeePaise) || settings.serviceFeePaise < 0) throw new Error("Enter valid restaurant settings.");
-      await updateDoc(doc(db, "restaurants", shopId), { name: String(settings.name).trim(), nameKey: String(settings.name).trim().toLocaleLowerCase("en-US"), taxRateBps: settings.taxRateBps, serviceFeePaise: settings.serviceFeePaise, isAcceptingOrders: settings.isAcceptingOrders === true, updatedAt: serverTimestamp() });
-      await setDoc(doc(db, "publicRestaurants", shopId), { name: String(settings.name).trim(), taxRateBps: settings.taxRateBps, serviceFeePaise: settings.serviceFeePaise, isAcceptingOrders: settings.isAcceptingOrders === true, updatedAt: serverTimestamp() }, { merge: true });
+      const payAtRestaurantEnabled = settings.payAtRestaurantEnabled === true; const upiEnabled = settings.upiEnabled === true;
+      const upiId = String(settings.upiId ?? "").trim(); const upiPayeeName = String(settings.upiPayeeName ?? "").trim();
+      if (!payAtRestaurantEnabled && !upiEnabled) throw new Error("Enable at least one payment method.");
+      if (upiEnabled && (!/^[A-Za-z0-9._-]{2,100}@[A-Za-z0-9.-]{2,64}$/.test(upiId) || upiPayeeName.length < 2 || upiPayeeName.length > 80)) throw new Error("Enter a valid UPI ID and payee name.");
+      const paymentConfig = { payAtRestaurantEnabled, upiEnabled, upiId: upiEnabled ? upiId : "", upiPayeeName: upiEnabled ? upiPayeeName : String(settings.name).trim() };
+      await updateDoc(doc(db, "restaurants", shopId), { name: String(settings.name).trim(), nameKey: String(settings.name).trim().toLocaleLowerCase("en-US"), taxRateBps: settings.taxRateBps, serviceFeePaise: settings.serviceFeePaise, isAcceptingOrders: settings.isAcceptingOrders === true, ...paymentConfig, updatedAt: serverTimestamp() });
+      await setDoc(doc(db, "publicRestaurants", shopId), { name: String(settings.name).trim(), taxRateBps: settings.taxRateBps, serviceFeePaise: settings.serviceFeePaise, isAcceptingOrders: settings.isAcceptingOrders === true, ...paymentConfig, updatedAt: serverTimestamp() }, { merge: true });
       await audit(shopId, "restaurant.settings_updated", "restaurant", shopId, settings);
       return { ok: true } as TOutput;
     }

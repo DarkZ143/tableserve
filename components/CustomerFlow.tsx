@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { collection, doc, onSnapshot, query, where } from "firebase/firestore";
 import { ArrowLeft, ArrowRight, Check, ChefHat, CircleHelp, Clock3, LockKeyhole, Minus, Plus, QrCode, Search, ShoppingBag, UtensilsCrossed, X } from "lucide-react";
+import { QRCodeCanvas } from "qrcode.react";
 import { runFirebaseAction } from "@/lib/firebase-actions";
 import { BrandMark } from "@/components/BrandMark";
 import { errorMessage, money } from "@/lib/format";
@@ -23,7 +24,7 @@ type CartLine = {
   unitPricePaise: number;
   labels: string[];
 };
-type GuestForm = { customerName: string; customerPhone: string };
+type GuestForm = { customerName: string; customerPhone: string; customerEmail?: string };
 
 export default function CustomerFlow({ shopId, token }: { shopId: string; token?: string }) {
   const navigate = useNavigate();
@@ -47,6 +48,8 @@ export default function CustomerFlow({ shopId, token }: { shopId: string; token?
   const [submitting, setSubmitting] = useState(false);
   const [checkoutStage, setCheckoutStage] = useState<"details" | "payment">("details");
   const [checkoutCustomer, setCheckoutCustomer] = useState<GuestForm | null>(null);
+  const [checkoutPaymentMethod, setCheckoutPaymentMethod] = useState<"upi" | "pay_after_serve">("pay_after_serve");
+  const [upiPaymentConfirmed, setUpiPaymentConfirmed] = useState(false);
   const idempotency = useRef<{ fingerprint: string; key: string } | null>(null);
   const [ticketSearch, setTicketSearch] = useState("");
   const [scanOpen, setScanOpen] = useState(false);
@@ -66,6 +69,12 @@ export default function CustomerFlow({ shopId, token }: { shopId: string; token?
 
   const activeRestaurantId = table?.restaurantId ?? "";
   useEffect(() => {
+    if (!table) return;
+    setCheckoutPaymentMethod(table.payAtRestaurantEnabled ? "pay_after_serve" : "upi");
+    setUpiPaymentConfirmed(false);
+  }, [table?.payAtRestaurantEnabled, table?.upiEnabled]);
+
+  useEffect(() => {
     if (!token || !activeRestaurantId || !firebaseConfigured) return;
     const { db } = getFirebase();
     return onSnapshot(doc(db, "publicRestaurants", activeRestaurantId), (snapshot) => {
@@ -80,9 +89,22 @@ export default function CustomerFlow({ shopId, token }: { shopId: string; token?
         && periodEndMs !== null
         && periodEndMs > Date.now()
         && (orderLimit === null || Number(restaurant?.currentUsage ?? 0) < orderLimit);
-      setTableState((current) => current?.token === token && current.context.isAcceptingOrders !== canAcceptOrders
-        ? { ...current, context: { ...current.context, isAcceptingOrders: canAcceptOrders } }
-        : current);
+      const paymentConfig = {
+        payAtRestaurantEnabled: restaurant?.payAtRestaurantEnabled !== false,
+        upiEnabled: restaurant?.upiEnabled === true,
+        upiId: String(restaurant?.upiId ?? ""),
+        upiPayeeName: String(restaurant?.upiPayeeName ?? ""),
+      };
+      setTableState((current) => {
+        if (current?.token !== token) return current;
+        const context = current.context;
+        if (context.isAcceptingOrders === canAcceptOrders
+          && context.payAtRestaurantEnabled === paymentConfig.payAtRestaurantEnabled
+          && context.upiEnabled === paymentConfig.upiEnabled
+          && context.upiId === paymentConfig.upiId
+          && context.upiPayeeName === paymentConfig.upiPayeeName) return current;
+        return { ...current, context: { ...context, ...paymentConfig, isAcceptingOrders: canAcceptOrders } };
+      });
     });
   }, [activeRestaurantId, token]);
 
@@ -115,6 +137,9 @@ export default function CustomerFlow({ shopId, token }: { shopId: string; token?
   const tax = Math.round(subtotal * (table?.taxRateBps ?? 0) / 10000);
   const serviceFee = subtotal ? (table?.serviceFeePaise ?? 0) : 0;
   const total = subtotal + tax + serviceFee;
+  const upiIntentUrl = table?.upiEnabled && table.upiId
+    ? `upi://pay?pa=${encodeURIComponent(table.upiId)}&pn=${encodeURIComponent(table.upiPayeeName || table.restaurantName)}&am=${(total / 100).toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Table ${table.tableNumber} order`)}`
+    : "";
 
   function addLine(item: MenuItem, selectedVariant = "", selectedAddOns: string[] = [], specialNote = "") {
     const variant = item.variants?.find((choice) => choice.id === selectedVariant);
@@ -130,6 +155,7 @@ export default function CustomerFlow({ shopId, token }: { shopId: string; token?
     setCustomizing(null);
     setCheckoutStage("details");
     setCheckoutCustomer(null);
+    setUpiPaymentConfirmed(false);
     setMode("menu");
   }
 
@@ -137,6 +163,7 @@ export default function CustomerFlow({ shopId, token }: { shopId: string; token?
     setCart((current) => current.map((line) => line.key === key ? { ...line, quantity: line.quantity + change } : line).filter((line) => line.quantity > 0));
     setCheckoutStage("details");
     setCheckoutCustomer(null);
+    setUpiPaymentConfirmed(false);
   }
 
   function addItem(item: MenuItem) {
@@ -154,6 +181,7 @@ export default function CustomerFlow({ shopId, token }: { shopId: string; token?
     setCheckoutError("");
     const name = form.customerName.trim();
     const phone = form.customerPhone.trim();
+    const email = String(form.customerEmail ?? "").trim().toLowerCase();
     if (name.length < 2 || name.length > 80) {
       setError("customerName", { message: "Enter a name between 2 and 80 characters." });
       return;
@@ -162,9 +190,18 @@ export default function CustomerFlow({ shopId, token }: { shopId: string; token?
       setError("customerPhone", { message: "Enter a valid phone number." });
       return;
     }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+      setError("customerEmail", { message: "Enter a valid email address." });
+      return;
+    }
+    if (checkoutPaymentMethod === "upi" && !upiPaymentConfirmed) {
+      setCheckoutError("Complete the UPI payment and confirm it below before placing your order.");
+      return;
+    }
     if (!token || !cart.length) return;
     const requestItems = cart.map((line) => ({ itemId: line.itemId, quantity: line.quantity, variantId: line.variantId, addOnIds: line.addOnIds, specialInstructions: line.note || undefined }));
-    const fingerprint = JSON.stringify({ token, customerName: name, customerPhone: phone, items: requestItems });
+    const paymentTiming = checkoutPaymentMethod === "upi" ? "prepaid" : "pay_after_serve";
+    const fingerprint = JSON.stringify({ token, customerName: name, customerPhone: phone, customerEmail: email, paymentTiming, paymentMethod: checkoutPaymentMethod, whatsappBillOptIn: false, items: requestItems });
     if (!idempotency.current || idempotency.current.fingerprint !== fingerprint) idempotency.current = { fingerprint, key: crypto.randomUUID() };
     setSubmitting(true);
     try {
@@ -174,7 +211,11 @@ export default function CustomerFlow({ shopId, token }: { shopId: string; token?
         idempotencyKey: string;
         customerName: string;
         customerPhone: string;
-        mockPaymentConfirmed: true;
+        customerEmail: string;
+        paymentTiming: "prepaid" | "pay_after_serve";
+        paymentMethod: "upi" | "pay_after_serve";
+        whatsappBillOptIn: boolean;
+        upiPaymentConfirmed: boolean;
         items: { itemId: string; quantity: number; variantId?: string; addOnIds: string[]; specialInstructions?: string }[];
       }, { ticketId: string }>("placeOrder", {
         shopId,
@@ -182,7 +223,11 @@ export default function CustomerFlow({ shopId, token }: { shopId: string; token?
         idempotencyKey: idempotency.current.key,
         customerName: name,
         customerPhone: phone,
-        mockPaymentConfirmed: true,
+        customerEmail: email,
+        paymentTiming,
+        paymentMethod: checkoutPaymentMethod,
+        whatsappBillOptIn: false,
+        upiPaymentConfirmed,
         items: requestItems,
       });
       navigate(`/t/${shopId}/${token}/success/${encodeURIComponent(result.ticketId)}`);
@@ -214,6 +259,7 @@ export default function CustomerFlow({ shopId, token }: { shopId: string; token?
       void handleSubmit((form) => {
         const name = form.customerName.trim();
         const phone = form.customerPhone.trim();
+        const email = String(form.customerEmail ?? "").trim();
         if (name.length < 2 || name.length > 80) {
           setError("customerName", { message: "Enter a name between 2 and 80 characters." });
           return;
@@ -222,8 +268,12 @@ export default function CustomerFlow({ shopId, token }: { shopId: string; token?
           setError("customerPhone", { message: "Enter a valid phone number." });
           return;
         }
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+          setError("customerEmail", { message: "Enter a valid email address." });
+          return;
+        }
         setCheckoutError("");
-        setCheckoutCustomer({ customerName: name, customerPhone: phone });
+        setCheckoutCustomer({ customerName: name, customerPhone: phone, customerEmail: email });
         setCheckoutStage("payment");
       })(event);
       return;
@@ -325,20 +375,23 @@ export default function CustomerFlow({ shopId, token }: { shopId: string; token?
               </div>)}
             </div>
             <form className="surface-card" style={{ marginTop: 13, padding: 16 }} onSubmit={submitGuestForm}>
-              <div className="eyebrow">{checkoutStage === "details" ? "Checkout · step 1 of 2" : "Checkout · step 2 of 2"}</div><h2 style={{ margin: "4px 0", fontSize: 24 }}>{checkoutStage === "details" ? "Your table, taken care of." : "Pay before your order"}</h2>
+              <div className="eyebrow">{checkoutStage === "details" ? "Checkout · step 1 of 2" : "Checkout · step 2 of 2"}</div><h2 style={{ margin: "4px 0", fontSize: 24 }}>{checkoutStage === "details" ? "Your table, taken care of." : "Choose how to pay"}</h2>
               <div className="locked-table"><span><strong>Table {table.tableNumber}</strong><small className="muted" style={{ display: "block", marginTop: 4 }}>This table is linked to your QR code</small></span><span className="locked-label"><LockKeyhole size={14} /> Read only</span></div>
               {checkoutStage === "details" ? <div className="checkout-fields">
                 <label className="field-label">Your name<input className="field" autoComplete="name" {...register("customerName", { required: "Please enter your name.", minLength: { value: 2, message: "Enter at least 2 characters." } })} placeholder="Name for the order" /></label>
                 {errors.customerName && <small className="muted">{errors.customerName.message}</small>}
                 <label className="field-label">Phone number<input className="field" type="tel" autoComplete="tel" {...register("customerPhone", { required: "Please enter your phone number." })} placeholder="For order updates" /></label>
                 {errors.customerPhone && <small className="muted">{errors.customerPhone.message}</small>}
+                <label className="field-label">Email for your bill <small className="muted">Optional · used only to prepare your bill email</small><input className="field" type="email" autoComplete="email" {...register("customerEmail")} placeholder="you@example.com" /></label>
+                {errors.customerEmail && <small className="muted">{errors.customerEmail.message}</small>}
               </div> : <>
-                <div className="session-card" style={{ marginTop: 13 }}>
-                  <div className="session-main"><span className="hero-symbol" style={{ width: 39, height: 39, margin: 0, fontSize: 16 }}>₹</span><div><strong>Mock payment · demo only</strong><span>No real money will be charged</span></div></div>
-                  <span className="locked-label"><Check size={14} /> Pay first</span>
+                <div className="payment-timing-options" role="radiogroup" aria-label="Choose how to pay">
+                  {table.payAtRestaurantEnabled && <label className={`payment-timing-option ${checkoutPaymentMethod === "pay_after_serve" ? "selected" : ""}`}><input type="radio" name="paymentMethod" value="pay_after_serve" checked={checkoutPaymentMethod === "pay_after_serve"} onChange={() => { setCheckoutPaymentMethod("pay_after_serve"); setUpiPaymentConfirmed(false); }} /><span><strong>Pay at restaurant</strong><small>Place the order now; pay the restaurant staff after it reaches your table.</small></span></label>}
+                  {table.upiEnabled && <label className={`payment-timing-option ${checkoutPaymentMethod === "upi" ? "selected" : ""}`}><input type="radio" name="paymentMethod" value="upi" checked={checkoutPaymentMethod === "upi"} onChange={() => { setCheckoutPaymentMethod("upi"); setUpiPaymentConfirmed(false); }} /><span><strong>Pay online by UPI</strong><small>Pay directly to {table.upiPayeeName || table.restaurantName} using its UPI ID.</small></span></label>}
                 </div>
-                <p className="muted" style={{ margin: "10px 0" }}>Order for {checkoutCustomer?.customerName} · {checkoutCustomer?.customerPhone}. This payment is simulated; connect a payment gateway before using it to collect real money.</p>
-                <button className="btn btn-quiet btn-small" type="button" onClick={() => { setCheckoutStage("details"); setCheckoutError(""); }}>Edit name or phone</button>
+                {checkoutPaymentMethod === "upi" && upiIntentUrl && <div className="upi-checkout-card"><div className="upi-checkout-heading"><div><div className="eyebrow">Direct UPI payment</div><strong>{money(total)}</strong><small>Pay to {table.upiPayeeName || table.restaurantName} · {table.upiId}</small></div><span className="upi-badge">UPI</span></div><div className="upi-checkout-content"><QRCodeCanvas value={upiIntentUrl} size={176} level="M" includeMargin /><div><p>Scan this QR from another device, or open your UPI app on this phone. The payment goes directly to the restaurant.</p><a className="btn btn-soft btn-small" href={upiIntentUrl}>Open UPI app <ArrowRight size={14} /></a><label className="upi-paid-confirm"><input type="checkbox" checked={upiPaymentConfirmed} onChange={(event) => setUpiPaymentConfirmed(event.target.checked)} /><span>I completed the UPI payment</span></label></div></div><small className="upi-verification-note">Restaurant staff will verify the payment in their UPI account before marking the order paid.</small></div>}
+                <p className="muted" style={{ margin: "10px 0" }}>Order for {checkoutCustomer?.customerName} · {checkoutCustomer?.customerPhone}{checkoutCustomer?.customerEmail ? ` · ${checkoutCustomer.customerEmail}` : ""}.</p>
+                <button className="btn btn-quiet btn-small" type="button" onClick={() => { setCheckoutStage("details"); setCheckoutError(""); }}>Edit contact details</button>
               </>}
               <div className="totals">
                 <div className="totals-row"><span>Items subtotal</span><strong>{money(subtotal)}</strong></div>
@@ -347,8 +400,8 @@ export default function CustomerFlow({ shopId, token }: { shopId: string; token?
                 <div className="totals-row grand"><span>Order total</span><strong>{money(total)}</strong></div>
               </div>
               {checkoutError && <div className="notice error" style={{ marginBottom: 12 }}>{checkoutError}</div>}
-              <button className="btn btn-primary" type="submit" disabled={submitting || !table.isAcceptingOrders} style={{ width: "100%", minHeight: 52 }}>{submitting ? "Sending your order…" : !table.isAcceptingOrders ? "Ordering paused" : checkoutStage === "details" ? "Continue to payment" : `Pay ${money(total)} (mock) & place order`}<ArrowRight size={17} /></button>
-              <p className="muted" style={{ margin: "10px 0 0", textAlign: "center", fontSize: 10 }}>{checkoutStage === "details" ? "Payment is required before the order is sent." : "Mock payment only. No money will be charged."}</p>
+              <button className="btn btn-primary" type="submit" disabled={submitting || !table.isAcceptingOrders || (checkoutStage === "payment" && checkoutPaymentMethod === "upi" && !upiPaymentConfirmed)} style={{ width: "100%", minHeight: 52 }}>{submitting ? "Sending your order…" : !table.isAcceptingOrders ? "Ordering paused" : checkoutStage === "details" ? "Continue to payment" : checkoutPaymentMethod === "upi" ? "I’ve paid · place order" : "Place order · pay at restaurant"}<ArrowRight size={17} /></button>
+              <p className="muted" style={{ margin: "10px 0 0", textAlign: "center", fontSize: 10 }}>{checkoutStage === "details" ? "Choose a payment method configured by this restaurant on the next step." : checkoutPaymentMethod === "upi" ? "UPI payments go directly to this restaurant. Staff will confirm receipt." : "The restaurant will record payment after collecting it from you."}</p>
             </form>
           </>}
         </section>}

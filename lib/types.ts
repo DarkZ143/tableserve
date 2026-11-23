@@ -27,6 +27,10 @@ export type TableContext = {
   tableNumber: string;
   taxRateBps: number;
   serviceFeePaise: number;
+  payAtRestaurantEnabled: boolean;
+  upiEnabled: boolean;
+  upiId: string;
+  upiPayeeName: string;
   isAcceptingOrders: boolean;
 };
 
@@ -54,16 +58,26 @@ export type AdminOrder = {
   tableNumberSnapshot: string;
   customerName?: string;
   customerPhone?: string;
+  customerEmail?: string;
   items: OrderItem[];
   subtotalPaise: number;
   taxPaise: number;
   serviceFeePaise: number;
   totalAmountPaise: number;
   paymentStatus?: "mock_paid" | "pending" | "paid" | "failed";
-  paymentProvider?: "mock" | "razorpay" | "stripe";
+  paymentProvider?: "mock" | "manual" | "razorpay" | "stripe";
+  paymentTiming?: "prepaid" | "pay_after_serve";
+  paymentMethod?: "mock" | "pay_after_serve" | "cash" | "upi" | "card";
+  whatsappBillOptIn?: boolean;
+  whatsappBillStatus?: "sending" | "sent" | "failed";
+  whatsappMessageId?: string;
+  whatsappBillSentAt?: { toDate: () => Date; toMillis: () => number };
+  whatsappBillSendStartedAt?: { toDate: () => Date; toMillis: () => number };
   status: OrderStatus;
   assignedStaffUid?: string | null;
   estimatedMinutes: number | null;
+  customerServedResponse?: { response: "yes" | "no"; details?: string; createdAt?: { toDate: () => Date; toMillis: () => number } };
+  serviceIssueResolvedAt?: { toDate: () => Date; toMillis: () => number };
   statusEvents?: { status: OrderStatus; at?: { toDate: () => Date; toMillis: () => number } }[];
   expectedReadyAt?: { toDate: () => Date } | null;
   createdAt?: { toDate: () => Date };
@@ -76,6 +90,7 @@ export type WaiterOrder = {
   items: Pick<OrderItem, "name" | "quantity" | "specialInstructions" | "selections">[];
   status: OrderStatus;
   estimatedMinutes: number | null;
+  expectedReadyAt?: { toDate: () => Date } | null;
   createdAt?: { toDate: () => Date };
 };
 
@@ -83,9 +98,18 @@ export type PublicTracking = {
   ticketId: string;
   tableNumber: string;
   status: OrderStatus;
+  paymentTiming?: "prepaid" | "pay_after_serve";
+  paymentStatus?: "mock_paid" | "pending" | "paid" | "failed";
+  paymentMethod?: "mock" | "pay_after_serve" | "cash" | "upi" | "card";
+  items?: Pick<OrderItem, "name" | "quantity" | "lineTotalPaise" | "selections">[];
+  subtotalPaise?: number;
+  taxPaise?: number;
+  serviceFeePaise?: number;
+  totalAmountPaise?: number;
   estimatedMinutes: number | null;
   expectedReadyAtMs: number | null;
   statusEvents: { status: OrderStatus; atMs: number | null }[];
+  customerServedResponse?: { response: "yes" | "no"; details?: string; atMs: number | null };
 };
 
 export type StaffRole = "owner" | "manager" | "kitchen" | "waiter";
